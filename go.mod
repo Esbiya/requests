@@ -1,4 +1,4 @@
-module requests
+module github.com/Esbiya/requests
 
 go 1.14
 
