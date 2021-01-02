@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -62,6 +63,24 @@ func (r *Response) JSON() (map[string]interface{}, error) {
 	// 将处理的数字转化成 json.Number 的形式，防止丢失精度
 	dec.UseNumber()
 	if err := dec.Decode(&result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *Response) CallbackJSON() (map[string]interface{}, error) {
+	if r.Err != nil {
+		return nil, r.Err
+	}
+	if r.StatusCode != http.StatusOK {
+		return nil, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
+	}
+	var result map[string]interface{}
+	re, _ := regexp.Compile("\\({.*?}\\)")
+	y := re.FindStringSubmatch(r.Text)
+	decoder := json.NewDecoder(bytes.NewReader([]byte(y[0][1 : len(y[0])-1])))
+	decoder.UseNumber()
+	if err := decoder.Decode(&result); err != nil {
 		return nil, err
 	}
 	return result, nil
