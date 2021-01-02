@@ -76,7 +76,7 @@ func (r *Response) CallbackJSON() (map[string]interface{}, error) {
 		return nil, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
 	}
 	var result map[string]interface{}
-	re, _ := regexp.Compile("\\({.*?}\\)")
+	re, _ := regexp.Compile("\\({[\\s\\S]*?}\\)")
 	y := re.FindStringSubmatch(r.Text)
 	decoder := json.NewDecoder(bytes.NewReader([]byte(y[0][1 : len(y[0])-1])))
 	decoder.UseNumber()
