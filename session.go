@@ -22,6 +22,7 @@ type (
 		cookieStore            CookieStore
 		beforeRequestHookFuncs []BeforeRequestHookFunc
 		afterResponseHookFuncs []AfterResponseHookFunc
+		option                 []ModifySessionOption
 	}
 )
 
@@ -146,6 +147,7 @@ func NewSession(opts ...ModifySessionOption) *Session {
 	return &Session{
 		Client:      client,
 		cookieStore: make(CookieStore, 0),
+		option:      opts,
 	}
 }
 
@@ -308,6 +310,14 @@ func (s *Session) RegisterAfterRespHook(fn AfterResponseHookFunc) error {
 	}
 	s.afterResponseHookFuncs = append(s.afterResponseHookFuncs, fn)
 	return nil
+}
+
+func (s *Session) Copy() *Session {
+	opt := s.option
+	session := NewSession(opt...)
+	session.cookieStore = s.cookieStore
+	session.InitCookieStore("", s.cookieStore)
+	return session
 }
 
 func (s *Session) UnregisterAfterRespHook(index int) error {
