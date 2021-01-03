@@ -262,6 +262,11 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 	return NewResponse(r)
 }
 
+func (s *Session) AsyncRequest(method string, urlStr string, option Option, ch chan *Response) {
+	response := s.Request(method, urlStr, option)
+	ch <- response
+}
+
 func (s *Session) GetRequest() *http.Request {
 	return s.request
 }
@@ -321,26 +326,54 @@ func (s *Session) Get(url string, option Option) *Response {
 	return s.Request("get", url, option)
 }
 
+func (s *Session) AsyncGet(url string, option Option, ch chan *Response) {
+	go s.AsyncRequest("get", url, option, ch)
+}
+
 func (s *Session) Post(url string, option Option) *Response {
 	return s.Request("post", url, option)
+}
+
+func (s *Session) AsyncPost(url string, option Option, ch chan *Response) {
+	go s.AsyncRequest("post", url, option, ch)
 }
 
 func (s *Session) Head(url string, option Option) *Response {
 	return s.Request("head", url, option)
 }
 
+func (s *Session) AsyncHead(url string, option Option, ch chan *Response) {
+	go s.AsyncRequest("head", url, option, ch)
+}
+
 func (s *Session) Delete(url string, option Option) *Response {
 	return s.Request("delete", url, option)
+}
+
+func (s *Session) AsyncDelete(url string, option Option, ch chan *Response) {
+	go s.AsyncRequest("delete", url, option, ch)
 }
 
 func (s *Session) Options(url string, option Option) *Response {
 	return s.Request("options", url, option)
 }
 
+func (s *Session) AsyncOptions(url string, option Option, ch chan *Response) {
+	go s.AsyncRequest("options", url, option, ch)
+}
+
 func (s *Session) Put(url string, option Option) *Response {
 	return s.Request("put", url, option)
 }
 
+func (s *Session) AsyncPut(url string, option Option, ch chan *Response) {
+	go s.AsyncRequest("put", url, option, ch)
+}
+
 func (s *Session) Patch(url string, option Option) *Response {
 	return s.Request("patch", url, option)
+}
+
+func (s *Session) AsyncPatch(url string, option Option, ch chan *Response) {
+	go s.AsyncRequest("patch", url, option, ch)
 }

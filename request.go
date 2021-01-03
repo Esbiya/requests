@@ -48,44 +48,72 @@ const (
 	PATCH   = "PATCH"
 )
 
-// Get implemented by Session.Get
 func Get(url string, option Option) *Response {
 	session := NewSession()
 	return session.Get(url, option)
 }
 
-// Post implemented by Session.Post
+func AsyncGet(url string, option Option, ch chan *Response) {
+	session := NewSession()
+	go session.AsyncGet(url, option, ch)
+}
+
 func Post(url string, option Option) *Response {
 	session := NewSession()
 	return session.Post(url, option)
 }
 
-// Head implemented by Session.Head
+func AsyncPost(url string, option Option, ch chan *Response) {
+	session := NewSession()
+	go session.AsyncPost(url, option, ch)
+}
+
 func Head(url string, option Option) *Response {
 	session := NewSession()
 	return session.Head(url, option)
 }
 
-// Delete implemented by Session.Delete
+func AsyncHead(url string, option Option, ch chan *Response) {
+	session := NewSession()
+	go session.AsyncHead(url, option, ch)
+}
+
 func Delete(url string, option Option) *Response {
 	session := NewSession()
 	return session.Delete(url, option)
 }
 
-// RequestArgs implemented by Session.RequestArgs
+func AsyncDelete(url string, option Option, ch chan *Response) {
+	session := NewSession()
+	go session.AsyncDelete(url, option, ch)
+}
+
 func Options(url string, option Option) *Response {
 	session := NewSession()
 	return session.Options(url, option)
 }
 
-// Put implemented by Session.Put
+func AsyncOption(url string, option Option, ch chan *Response) {
+	session := NewSession()
+	go session.AsyncOptions(url, option, ch)
+}
+
 func Put(url string, option Option) *Response {
 	session := NewSession()
 	return session.Put(url, option)
 }
 
-// Patch implemented by Session.Patch
+func AsyncPut(url string, option Option, ch chan *Response) {
+	session := NewSession()
+	go session.AsyncPut(url, option, ch)
+}
+
 func Patch(url string, option Option) *Response {
 	session := NewSession()
 	return session.Patch(url, option)
+}
+
+func AsyncPatch(url string, option Option, ch chan *Response) {
+	session := NewSession()
+	go session.AsyncPatch(url, option, ch)
 }
