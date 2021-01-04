@@ -45,9 +45,7 @@ var (
 func (c *CookieStore) Append(c1 *http.Cookie) {
 	for i, c2 := range c.v {
 		if c1.Name == c2.Name {
-			c.Lock()
 			c.v = append(c.v[:i], c.v[i+1:]...)
-			c.Unlock()
 		}
 	}
 	c.v = append(c.v, c1)
@@ -265,7 +263,9 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 	}
 
 	for _, cookie := range r.Cookies() {
+		s.cookieStore.Lock()
 		s.cookieStore.Append(cookie)
+		s.cookieStore.Unlock()
 	}
 
 	return NewResponse(r)
