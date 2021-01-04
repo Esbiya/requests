@@ -159,9 +159,7 @@ func NewSession(opts ...ModifySessionOption) *Session {
 }
 
 func (s *Session) InitCookieStore(_url string, cookies []*http.Cookie) {
-	s.cookieStore.Lock()
 	s.cookieStore.v = cookies
-	s.cookieStore.Unlock()
 	Url, _ := url.Parse(_url)
 	s.Client.Jar.SetCookies(Url, cookies)
 }
@@ -177,21 +175,17 @@ func Cookie2Map(cookie *http.Cookie) map[string]interface{} {
 
 func (s *Session) CookieStore() []map[string]interface{} {
 	cookies := make([]map[string]interface{}, 0)
-	s.cookieStore.RLock()
 	for _, cookie := range s.cookieStore.v {
 		cookies = append(cookies, Cookie2Map(cookie))
 	}
-	s.cookieStore.RUnlock()
 	return cookies
 }
 
 func (s *Session) CookiesMap() map[string]interface{} {
 	cookies := map[string]interface{}{}
-	s.cookieStore.RLock()
 	for _, cookie := range s.cookieStore.v {
 		cookies[(*cookie).Name] = (*cookie).Value
 	}
-	s.cookieStore.RUnlock()
 	return cookies
 }
 
@@ -271,9 +265,7 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 	}
 
 	for _, cookie := range r.Cookies() {
-		s.cookieStore.Lock()
 		s.cookieStore.Append(cookie)
-		s.cookieStore.Unlock()
 	}
 
 	return NewResponse(r)
@@ -331,9 +323,7 @@ func (s *Session) Copy(_url string) *Session {
 	opt := s.option
 	session := NewSession(opt...)
 	session.cookieStore = s.cookieStore
-	s.cookieStore.RLock()
 	session.InitCookieStore(_url, s.cookieStore.v)
-	s.cookieStore.RUnlock()
 	return session
 }
 
