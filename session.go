@@ -43,7 +43,7 @@ var (
 )
 
 func (c *CookieStore) Append(c1 *http.Cookie) {
-	for i, c2 := range (*c).v {
+	for i, c2 := range c.v {
 		if c1.Name == c2.Name {
 			c.Lock()
 			c.v = append(c.v[:i], c.v[i+1:]...)
