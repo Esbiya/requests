@@ -16,7 +16,6 @@ import (
 type Response struct {
 	*http.Response
 	encoding string
-	Status   int
 	Text     string
 	Bytes    []byte
 	Err      error
@@ -27,7 +26,6 @@ func NewResponse(r *http.Response) *Response {
 		Response: r,
 		encoding: "utf-8",
 		Text:     "",
-		Status:   r.StatusCode,
 		Bytes:    []byte{},
 	}
 
@@ -77,10 +75,13 @@ func (r *Response) CallbackJSON() (map[string]interface{}, error) {
 	var result map[string]interface{}
 	re, _ := regexp.Compile("\\({[\\s\\S]*?}\\)")
 	y := re.FindStringSubmatch(r.Text)
+	if len(y) == 0 {
+		return result, ErrNotJSONResponse
+	}
 	decoder := json.NewDecoder(bytes.NewReader([]byte(y[0][1 : len(y[0])-1])))
 	decoder.UseNumber()
 	if err := decoder.Decode(&result); err != nil {
-		return nil, ErrNotJSONResponse
+		return result, ErrNotJSONResponse
 	}
 	return result, nil
 }

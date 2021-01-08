@@ -12,4 +12,12 @@ func TestRequest(t *testing.T) {
 	log.Println(resp.Cookies())
 	x, _ := json.MarshalIndent(session.CookieJar.Map(), "", "    ")
 	log.Println(string(x))
+
+	log.Println(resp.StatusCode)
+	c, _ := resp.CallbackJSON()
+	log.Println(c)
+	if _, ok := c["111"]; ok {
+		log.Println("111")
+	}
+	log.Println(c)
 }
