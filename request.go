@@ -21,7 +21,7 @@ var (
 
 	ErrHookFuncMaxLimit = errors.New("requests: the number of hook functions must be less than 8")
 
-	ErrIndexOutofBound = errors.New("requests: index out of bound")
+	ErrIndexOutOfBound = errors.New("requests: index out of bound")
 )
 
 const (

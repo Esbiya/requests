@@ -86,14 +86,14 @@ func (c *CookieJar) Load(path string) error {
 	}
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return errors.Wrap(err, "")
+		return errors.Wrap(err, "read cookies fail")
 	}
-	var cookies []*http.Cookie
+	var cookies []map[string]interface{}
 	err = json.Unmarshal(data, &cookies)
 	if err != nil {
 		return err
 	}
-	c.v = cookies
+	c.v = TransferCookies(cookies)
 	return nil
 }
 
@@ -426,7 +426,7 @@ func (s *Session) RegisterBeforeReqHook(fn BeforeRequestHookFunc) error {
 
 func (s *Session) UnregisterBeforeReqHook(index int) error {
 	if index >= len(s.beforeRequestHookFuncs) {
-		return ErrIndexOutofBound
+		return ErrIndexOutOfBound
 	}
 	s.beforeRequestHookFuncs = append(s.beforeRequestHookFuncs[:index], s.beforeRequestHookFuncs[index+1:]...)
 	return nil
@@ -458,7 +458,7 @@ func (s *Session) Copy(_url string) *Session {
 
 func (s *Session) UnregisterAfterRespHook(index int) error {
 	if index >= len(s.afterResponseHookFuncs) {
-		return ErrIndexOutofBound
+		return ErrIndexOutOfBound
 	}
 	s.afterResponseHookFuncs = append(s.afterResponseHookFuncs[:index], s.afterResponseHookFuncs[index+1:]...)
 	return nil
