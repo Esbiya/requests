@@ -49,6 +49,8 @@ func (c *CookieJar) Get() []*http.Cookie {
 
 func (c *CookieJar) Array() []map[string]interface{} {
 	cookies := make([]map[string]interface{}, 0)
+	c.RLock()
+	defer c.RUnlock()
 	for _, cookie := range c.v {
 		cookies = append(cookies, Cookie2Map(cookie))
 	}
@@ -57,6 +59,8 @@ func (c *CookieJar) Array() []map[string]interface{} {
 
 func (c *CookieJar) Map() map[string]interface{} {
 	cookies := map[string]interface{}{}
+	c.RLock()
+	defer c.RUnlock()
 	for _, cookie := range c.v {
 		cookies[(*cookie).Name] = (*cookie).Value
 	}

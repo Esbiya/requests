@@ -9,33 +9,19 @@ const (
 )
 
 var (
-	// ErrInvalidMethod will be throwed when method not in
-	// [HEAD, GET, POST, DELETE, OPTIONS, PUT, PATCH, CONNECT, TRACE]
-	ErrInvalidMethod = errors.New("nic: Method is invalid")
+	ErrInvalidMethod = errors.New("requests: method is invalid")
 
-	// ErrFileInfo will be throwed when fileinfo is invalid
-	ErrFileInfo = errors.New("nic: Invalid file information")
+	ErrFileInfo = errors.New("requests: invalid file information")
 
-	// ErrParamConflict will be throwed when options params conflict
-	// e.g. files + data
-	//      json + data
-	//      ...
-	ErrParamConflict = errors.New("nic: RequestArgs param conflict")
+	ErrParamConflict = errors.New("requests: requestArgs param conflict")
 
-	// ErrUnrecognizedEncoding will be throwed while changing response encoding
-	// if encoding is not recognized
-	ErrUnrecognizedEncoding = errors.New("nic: Unrecognized encoding")
+	ErrUnrecognizedEncoding = errors.New("requests: unrecognized encoding")
 
-	// ErrNotJsonResponse will be throwed when response not a json
-	// but invoke Json() method
-	ErrNotJsonResponse = errors.New("nic: Not a Json response")
+	ErrNotJSONResponse = errors.New("requests: not a json response")
 
-	// ErrHookFuncMaxLimit will be throwed when the number of hook functions
-	// more than MaxLimit = 8
-	ErrHookFuncMaxLimit = errors.New("nic: The number of hook functions must be less than 8")
+	ErrHookFuncMaxLimit = errors.New("requests: the number of hook functions must be less than 8")
 
-	// ErrIndexOutofBound means the index out of bound
-	ErrIndexOutofBound = errors.New("nic: Index out of bound")
+	ErrIndexOutofBound = errors.New("requests: index out of bound")
 )
 
 const (

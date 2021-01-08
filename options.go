@@ -18,7 +18,6 @@ import (
 )
 
 type (
-	// RequestArgs struct is options for request and http client
 	RequestArgs struct {
 		Params  DataMap
 		Data    DataMap
@@ -38,31 +37,8 @@ type (
 		SkipVerifyTLS      bool
 	}
 
-	// DataMap is used for RequestArgs struct
 	DataMap map[string]interface{}
 
-	// when upload a file, we use nic.DataMap again
-	// the POST body is:
-	//
-	// Content-Type: multipart/form-data; boundary=e7d105eae032bdc774a787f1d874269d04499cb284477d6d77889be73caf
-	//
-	// --e7d105eae032bdc774a787f1d874269d04499cb284477d6d77889be73caf
-	// Content-Disposition: form-data; name="file1"; filename="test.go"
-	// Content-Type: application/octet-stream
-	//
-	// package test
-	// --e7d105eae032bdc774a787f1d874269d04499cb284477d6d77889be73caf
-	// Content-Disposition: form-data; name="token"
-	//
-	// abc
-	// --e7d105eae032bdc774a787f1d874269d04499cb284477d6d77889be73caf
-	// Content-Disposition: form-data; name="file2"; filename="nic.go"
-	// Content-Type: text/plain
-	//
-	// package test
-	// --e7d105eae032bdc774a787f1d874269d04499cb284477d6d77889be73caf--
-
-	// FileOption struct saves file form information
 	FileOption struct {
 		Src       []byte
 		FileParam string
@@ -77,7 +53,6 @@ func (d *DataMap) JSON() string {
 	return string(_bytes)
 }
 
-// File returns a new file struct
 func File(filename string, src []byte) *FileOption {
 	return &FileOption{
 		Src:      src,
@@ -85,7 +60,6 @@ func File(filename string, src []byte) *FileOption {
 	}
 }
 
-// FileFromPath returns a file struct from file path
 func FileFromPath(path string) *FileOption {
 	return &FileOption{
 		FilePath: path,
@@ -93,17 +67,13 @@ func FileFromPath(path string) *FileOption {
 	}
 }
 
-// FName changes file's filename in multipart form
-// invoke it in a chain
 func (f *FileOption) FName(filename string) *FileOption {
 	f.FileName = filename
 	return f
 }
 
-// MIME changes file's mime type in multipart form
-// invoke it in a chain
-func (f *FileOption) MIME(mimetype string) *FileOption {
-	f.MimeType = mimetype
+func (f *FileOption) MIME(mimeType string) *FileOption {
+	f.MimeType = mimeType
 	return f
 }
 
@@ -113,13 +83,11 @@ func escapeQuotes(s string) string {
 	return quoteEscaper.Replace(s)
 }
 
-// Option is the interface implemented by `RequestArgs` and `*RequestArgs`
 type Option interface {
 	setRequestOpt(*http.Request) error
 	setClientOpt(*http.Client) error
 }
 
-// could only contains one of Data, Raw, Files, Json
 func (h RequestArgs) isConflict() bool {
 	count := 0
 	if h.Data != nil {
@@ -145,7 +113,7 @@ func setQuery(req *http.Request, p DataMap) error {
 		kEscaped := url.QueryEscape(k)
 		vs, ok := v.(string)
 		if !ok {
-			return fmt.Errorf("nic: query param %v[%T] must be string type", v, v)
+			return fmt.Errorf("requests: query param %v[%T] must be string type", v, v)
 		}
 		vEscaped := url.QueryEscape(vs)
 
@@ -155,7 +123,6 @@ func setQuery(req *http.Request, p DataMap) error {
 		extendQuery = append(extendQuery, []byte(vEscaped)...)
 	}
 
-	// trim the `&`
 	if originURL.RawQuery == "" {
 		extendQuery = extendQuery[1:]
 	}
@@ -193,6 +160,13 @@ func setFiles(req *http.Request, files DataMap, chunked bool) error {
 	buffer := &bytes.Buffer{}
 	writer := multipart.NewWriter(buffer)
 
+	var fp *os.File
+	defer func() {
+		if fp != nil {
+			fp.Close()
+		}
+	}()
+
 	for name, value := range files {
 		switch value := value.(type) {
 		case *FileOption:
@@ -223,11 +197,10 @@ func setFiles(req *http.Request, files DataMap, chunked bool) error {
 					return err
 				}
 			} else {
-				fp, err := os.Open(value.FilePath)
+				fp, err = os.Open(value.FilePath)
 				if err != nil {
 					return err
 				}
-				defer fp.Close()
 
 				_, err = io.Copy(fileWriter, fp)
 				if err != nil {
@@ -275,8 +248,6 @@ func setJSON(req *http.Request, j DataMap, chunked bool) error {
 	return nil
 }
 
-// set option for http.Request
-// data, header, cookie, auth, file, json
 func (h RequestArgs) setRequestOpt(req *http.Request) error {
 	if h.isConflict() {
 		return ErrParamConflict
@@ -361,8 +332,6 @@ func (h RequestArgs) setRequestOpt(req *http.Request) error {
 	return nil
 }
 
-// set option for http.Client
-// proxy, timeout, redirect
 func (h RequestArgs) setClientOpt(client *http.Client) error {
 	if !h.AllowRedirect {
 		client.CheckRedirect = disableRedirect

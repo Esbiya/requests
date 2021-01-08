@@ -13,7 +13,6 @@ import (
 	"strings"
 )
 
-// Response is the wrapper for http.Response
 type Response struct {
 	*http.Response
 	encoding string
@@ -63,7 +62,7 @@ func (r *Response) JSON() (map[string]interface{}, error) {
 	// 将处理的数字转化成 json.Number 的形式，防止丢失精度
 	dec.UseNumber()
 	if err := dec.Decode(&result); err != nil {
-		return nil, err
+		return nil, ErrNotJSONResponse
 	}
 	return result, nil
 }
@@ -81,13 +80,11 @@ func (r *Response) CallbackJSON() (map[string]interface{}, error) {
 	decoder := json.NewDecoder(bytes.NewReader([]byte(y[0][1 : len(y[0])-1])))
 	decoder.UseNumber()
 	if err := decoder.Decode(&result); err != nil {
-		return nil, err
+		return nil, ErrNotJSONResponse
 	}
 	return result, nil
 }
 
-// SetEncode changes Response.encoding
-// and it changes Response.Text every times be invoked
 func (r *Response) SetEncode(e string) error {
 	if r.encoding != e {
 		r.encoding = strings.ToLower(e)
@@ -100,12 +97,10 @@ func (r *Response) SetEncode(e string) error {
 	return nil
 }
 
-// GetEncode returns Response.encoding
 func (r Response) GetEncode() string {
 	return r.encoding
 }
 
-// SaveFile save bytes data to a local file
 func (r Response) SaveFile(filename string) error {
 	dst, err := os.Create(filename)
 	if err != nil {

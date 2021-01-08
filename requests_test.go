@@ -8,8 +8,8 @@ import (
 
 func TestRequest(t *testing.T) {
 	session := NewSession()
-	resp := session.Get("https://www.baidu.com", RequestArgs{}).Text
-	log.Println(resp)
+	resp := session.Get("https://www.baidu.com", RequestArgs{})
+	log.Println(resp.Cookies())
 	x, _ := json.MarshalIndent(session.CookieJar.Map(), "", "    ")
 	log.Println(string(x))
 }
