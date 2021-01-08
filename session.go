@@ -6,6 +6,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -65,6 +66,16 @@ func (c *CookieJar) Map() map[string]interface{} {
 		cookies[(*cookie).Name] = (*cookie).Value
 	}
 	return cookies
+}
+
+func (c *CookieJar) String() string {
+	r := ""
+	c.RLock()
+	defer c.RUnlock()
+	for _, cookie := range c.v {
+		r += (*cookie).Name + "=" + (*cookie).Value + "; "
+	}
+	return r[:len(r)-2]
 }
 
 func (c *CookieJar) Save(path string) error {
@@ -313,6 +324,7 @@ func (s *Session) Load(path string, _url string) error {
 	if err != nil {
 		return err
 	}
+	log.Println(s.CookieJar.String())
 	s.SetCookies(_url, s.CookieJar.v)
 	return nil
 }
