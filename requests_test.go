@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"encoding/json"
 	"log"
 	"testing"
 )
@@ -9,5 +10,6 @@ func TestRequest(t *testing.T) {
 	session := NewSession()
 	resp := session.Get("https://www.baidu.com", RequestArgs{}).Text
 	log.Println(resp)
-	log.Println(session.Cookies("https://www.baidu.com"))
+	x, _ := json.MarshalIndent(session.CookieJar.Array(), "", "    ")
+	log.Println(string(x))
 }

@@ -14,16 +14,52 @@ import (
 )
 
 type (
+	CookieJar struct {
+		sync.RWMutex
+		v []*http.Cookie
+	}
 	Session struct {
 		sync.Mutex
 		Url                    *url.URL
 		Client                 *http.Client
+		CookieJar              *CookieJar
 		request                *http.Request
 		beforeRequestHookFuncs []BeforeRequestHookFunc
 		afterResponseHookFuncs []AfterResponseHookFunc
 		option                 []ModifySessionOption
 	}
 )
+
+func (c *CookieJar) Set(c1 *http.Cookie) {
+	c.Lock()
+	for i, c2 := range c.v {
+		if c1.Name == c2.Name {
+			c.v = append(c.v[:i], c.v[i+1:]...)
+		}
+	}
+	c.v = append(c.v, c1)
+	c.Unlock()
+}
+
+func (c *CookieJar) Get() []*http.Cookie {
+	return c.v
+}
+
+func (c *CookieJar) Array() []map[string]interface{} {
+	cookies := make([]map[string]interface{}, 0)
+	for _, cookie := range c.v {
+		cookies = append(cookies, Cookie2Map(cookie))
+	}
+	return cookies
+}
+
+func (c *CookieJar) Map() map[string]interface{} {
+	cookies := map[string]interface{}{}
+	for _, cookie := range c.v {
+		cookies[(*cookie).Name] = (*cookie).Value
+	}
+	return cookies
+}
 
 var (
 	disableRedirect = func(req *http.Request, via []*http.Request) error {
@@ -151,10 +187,14 @@ func NewSession(opts ...ModifySessionOption) *Session {
 	session := &Session{
 		Url:    opt.url,
 		Client: client,
+		CookieJar: &CookieJar{
+			v: make([]*http.Cookie, 0),
+		},
 		option: opts,
 	}
 	if opt.cookies != nil {
 		session.Client.Jar.SetCookies(opt.url, opt.cookies)
+		session.CookieJar.v = opt.cookies
 	}
 	return session
 }
@@ -171,13 +211,16 @@ func (s *Session) SetUrl(_url string) *Session {
 	return s
 }
 
-func (s *Session) SetCookies(_url string, cookies []map[string]interface{}) *Session {
+func (s *Session) SetCookies(_url string, cookies []*http.Cookie) *Session {
 	Url, _ := url.Parse(_url)
-	s.Client.Jar.SetCookies(Url, TransferCookies(cookies))
+	s.Client.Jar.SetCookies(Url, cookies)
+	for _, cookie := range cookies {
+		s.CookieJar.Set(cookie)
+	}
 	return s
 }
 
-func (s *Session) Cookies(_url string) []map[string]interface{} {
+func (s *Session) Cookies(_url string) []*http.Cookie {
 	var Url *url.URL
 	if _url == "" {
 		Url = s.Url
@@ -185,13 +228,9 @@ func (s *Session) Cookies(_url string) []map[string]interface{} {
 		Url, _ = url.Parse(_url)
 	}
 	if Url == nil {
-		return []map[string]interface{}{}
+		return []*http.Cookie{}
 	}
-	cookies := make([]map[string]interface{}, 0)
-	for _, cookie := range s.Client.Jar.Cookies(Url) {
-		cookies = append(cookies, Cookie2Map(cookie))
-	}
-	return cookies
+	return s.Client.Jar.Cookies(Url)
 }
 
 func (s *Session) SetTimeout(timeout time.Duration) *Session {
@@ -282,6 +321,11 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 			break
 		}
 	}
+
+	for _, cookie := range r.Cookies() {
+		s.CookieJar.Set(cookie)
+	}
+
 	return NewResponse(r)
 }
 
