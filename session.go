@@ -2,8 +2,10 @@ package requests
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -59,6 +61,36 @@ func (c *CookieJar) Map() map[string]interface{} {
 		cookies[(*cookie).Name] = (*cookie).Value
 	}
 	return cookies
+}
+
+func (c *CookieJar) Save(path string) error {
+	if len(c.v) == 0 {
+		return errors.New("cannot find any cookies")
+	}
+
+	data, _ := json.MarshalIndent(c.Array(), "", "  ")
+	err := ioutil.WriteFile(path, data, 0777)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *CookieJar) Load(path string) error {
+	if !Exists(path) {
+		return errors.New("no such file or directory")
+	}
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return errors.Wrap(err, "")
+	}
+	var cookies []*http.Cookie
+	err = json.Unmarshal(data, &cookies)
+	if err != nil {
+		return err
+	}
+	c.v = cookies
+	return nil
 }
 
 var (
@@ -245,6 +277,19 @@ func (s *Session) AllowRedirect(y bool) *Session {
 		s.Client.CheckRedirect = disableRedirect
 	}
 	return s
+}
+
+func (s *Session) Save(path string) error {
+	return s.CookieJar.Save(path)
+}
+
+func (s *Session) Load(path string, _url string) error {
+	err := s.CookieJar.Load(path)
+	if err != nil {
+		return err
+	}
+	s.SetCookies(_url, s.CookieJar.v)
+	return nil
 }
 
 func (s *Session) Request(method string, urlStr string, option Option) *Response {

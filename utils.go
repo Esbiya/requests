@@ -3,6 +3,7 @@ package requests
 import (
 	"github.com/mitchellh/mapstructure"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -19,4 +20,15 @@ func TransferCookies(_cookies []map[string]interface{}) []*http.Cookie {
 		cookies = append(cookies, &_cookie)
 	}
 	return cookies
+}
+
+func Exists(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
 }
