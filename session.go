@@ -14,15 +14,11 @@ import (
 )
 
 type (
-	CookieStore struct {
-		sync.RWMutex
-		v []*http.Cookie
-	}
 	Session struct {
 		sync.Mutex
+		Url                    *url.URL
 		Client                 *http.Client
 		request                *http.Request
-		cookieStore            *CookieStore
 		beforeRequestHookFuncs []BeforeRequestHookFunc
 		afterResponseHookFuncs []AfterResponseHookFunc
 		option                 []ModifySessionOption
@@ -42,16 +38,9 @@ var (
 	}
 )
 
-func (c *CookieStore) Append(c1 *http.Cookie) {
-	for i, c2 := range c.v {
-		if c1.Name == c2.Name {
-			c.v = append(c.v[:i], c.v[i+1:]...)
-		}
-	}
-	c.v = append(c.v, c1)
-}
-
 type SessionArgs struct {
+	url                *url.URL
+	cookies            []*http.Cookie
 	proxy              string
 	timeout            time.Duration
 	skipVerifyTLS      bool
@@ -63,9 +52,21 @@ type SessionArgs struct {
 
 type ModifySessionOption func(session *SessionArgs)
 
+func Url(_url string) ModifySessionOption {
+	return func(r *SessionArgs) {
+		r.url, _ = url.Parse(_url)
+	}
+}
+
 func Proxy(_proxy string) ModifySessionOption {
 	return func(r *SessionArgs) {
 		r.proxy = _proxy
+	}
+}
+
+func Cookies(_cookies []map[string]interface{}) ModifySessionOption {
+	return func(r *SessionArgs) {
+		r.cookies = TransferCookies(_cookies)
 	}
 }
 
@@ -147,44 +148,64 @@ func NewSession(opts ...ModifySessionOption) *Session {
 		client.CheckRedirect = disableRedirect
 	}
 
-	return &Session{
+	session := &Session{
+		Url:    opt.url,
 		Client: client,
-		cookieStore: &CookieStore{
-			v: make([]*http.Cookie, 0),
-		},
 		option: opts,
 	}
-}
-
-func (s *Session) InitCookieStore(_url string, cookies []*http.Cookie) {
-	s.cookieStore.v = cookies
-	Url, _ := url.Parse(_url)
-	s.Client.Jar.SetCookies(Url, cookies)
+	if opt.cookies != nil {
+		session.Client.Jar.SetCookies(opt.url, opt.cookies)
+	}
+	return session
 }
 
 func Cookie2Map(cookie *http.Cookie) map[string]interface{} {
 	var _cookie map[string]interface{}
 	_ = mapstructure.Decode(cookie, &_cookie)
-	_cookie["Expires"] = map[string]int64{
-		"timestamp": (*cookie).Expires.Unix(),
-	}
+	_cookie["Expires"] = (*cookie).Expires.Unix()
 	return _cookie
 }
 
-func (s *Session) CookieStore() []map[string]interface{} {
+func (s *Session) SetUrl(_url string) *Session {
+	s.Url, _ = url.Parse(_url)
+	return s
+}
+
+func (s *Session) SetCookies(_url string, cookies []map[string]interface{}) *Session {
+	Url, _ := url.Parse(_url)
+	s.Client.Jar.SetCookies(Url, TransferCookies(cookies))
+	return s
+}
+
+func (s *Session) Cookies(_url string) []map[string]interface{} {
+	var Url *url.URL
+	if _url == "" {
+		Url = s.Url
+	} else {
+		Url, _ = url.Parse(_url)
+	}
+	if Url == nil {
+		return []map[string]interface{}{}
+	}
 	cookies := make([]map[string]interface{}, 0)
-	for _, cookie := range s.cookieStore.v {
+	for _, cookie := range s.Client.Jar.Cookies(Url) {
 		cookies = append(cookies, Cookie2Map(cookie))
 	}
 	return cookies
 }
 
-func (s *Session) CookiesMap() map[string]interface{} {
-	cookies := map[string]interface{}{}
-	for _, cookie := range s.cookieStore.v {
-		cookies[(*cookie).Name] = (*cookie).Value
+func (s *Session) SetTimeout(timeout time.Duration) *Session {
+	s.Client.Timeout = timeout
+	return s
+}
+
+func (s *Session) AllowRedirect(y bool) *Session {
+	if y {
+		s.Client.CheckRedirect = defaultCheckRedirect
+	} else {
+		s.Client.CheckRedirect = disableRedirect
 	}
-	return cookies
+	return s
 }
 
 func (s *Session) Request(method string, urlStr string, option Option) *Response {
@@ -261,13 +282,6 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 			break
 		}
 	}
-
-	for _, cookie := range r.Cookies() {
-		s.cookieStore.Lock()
-		s.cookieStore.Append(cookie)
-		s.cookieStore.Unlock()
-	}
-
 	return NewResponse(r)
 }
 
@@ -319,11 +333,9 @@ func (s *Session) RegisterAfterRespHook(fn AfterResponseHookFunc) error {
 	return nil
 }
 
-func (s *Session) Copy(_url string) *Session {
+func (s *Session) Copy() *Session {
 	opt := s.option
 	session := NewSession(opt...)
-	session.cookieStore = s.cookieStore
-	session.InitCookieStore(_url, s.cookieStore.v)
 	return session
 }
 
