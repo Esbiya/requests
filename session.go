@@ -380,7 +380,9 @@ func (s *Session) RegisterAfterRespHook(fn AfterResponseHookFunc) error {
 func (s *Session) Copy(_url string) *Session {
 	opt := s.option
 	session := NewSession(opt...)
+	session.CookieJar = s.CookieJar
 	session.SetCookies(_url, s.Cookies(_url))
+	session.SetCookies(_url, s.CookieJar.v)
 	return session
 }
 
