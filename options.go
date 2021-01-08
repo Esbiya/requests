@@ -291,9 +291,7 @@ func (h RequestArgs) setRequestOpt(req *http.Request) error {
 		for cookieK, cookieV := range h.Cookies {
 			cookieVS, ok := cookieV.(string)
 			if !ok {
-				return fmt.Errorf(
-					"cookie %v[%T] must be string type",
-					cookieV, cookieV)
+				return fmt.Errorf("cookie %v[%T] must be string type", cookieV, cookieV)
 			}
 			c := &http.Cookie{
 				Name:  cookieK,

@@ -3,10 +3,10 @@ package requests
 import (
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -324,7 +324,6 @@ func (s *Session) Load(path string, _url string) error {
 	if err != nil {
 		return err
 	}
-	log.Println(s.CookieJar.String())
 	s.SetCookies(_url, s.CookieJar.v)
 	return nil
 }
@@ -362,6 +361,19 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 		}
 
 		if option != nil {
+			for cookieK, cookieV := range s.CookieJar.Map() {
+				cookieVS, ok := cookieV.(string)
+				if !ok {
+					return &Response{
+						Err: errors.New(fmt.Sprintf("cookie %v[%T] must be string type", cookieV, cookieV)),
+					}
+				}
+				c := &http.Cookie{
+					Name:  cookieK,
+					Value: cookieVS,
+				}
+				s.request.AddCookie(c)
+			}
 			err = option.setRequestOpt(s.request)
 			if err != nil {
 				return &Response{
