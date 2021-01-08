@@ -333,9 +333,10 @@ func (s *Session) RegisterAfterRespHook(fn AfterResponseHookFunc) error {
 	return nil
 }
 
-func (s *Session) Copy() *Session {
+func (s *Session) Copy(_url string) *Session {
 	opt := s.option
 	session := NewSession(opt...)
+	session.SetCookies(_url, s.Cookies(_url))
 	return session
 }
 
