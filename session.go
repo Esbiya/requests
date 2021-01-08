@@ -274,7 +274,28 @@ func (s *Session) SetTimeout(timeout time.Duration) *Session {
 	return s
 }
 
-func (s *Session) AllowRedirect(y bool) *Session {
+func (s *Session) SetSkipVerifyTLS(ssl bool) *Session {
+	s.Client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = ssl
+	return s
+}
+
+func (s *Session) SetProxy(proxy string) *Session {
+	proxyUrl, _ := url.Parse(proxy)
+	s.Client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyUrl)
+	return s
+}
+
+func (s *Session) SetDisableKeepAlive(disable bool) *Session {
+	s.Client.Transport.(*http.Transport).DisableKeepAlives = disable
+	return s
+}
+
+func (s *Session) SetDisableCompression(disable bool) *Session {
+	s.Client.Transport.(*http.Transport).DisableCompression = disable
+	return s
+}
+
+func (s *Session) SetAllowRedirect(y bool) *Session {
 	if y {
 		s.Client.CheckRedirect = defaultCheckRedirect
 	} else {
