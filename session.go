@@ -3,8 +3,6 @@ package requests
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net"
@@ -14,6 +12,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+)
+
+const (
+	SaveAsString = 1
+	SaveAsMap    = 2
+	SaveAsArray  = 3
 )
 
 type (
@@ -75,7 +79,10 @@ func (c *CookieJar) String() string {
 	for _, cookie := range c.v {
 		r += (*cookie).Name + "=" + (*cookie).Value + "; "
 	}
-	return r[:len(r)-2]
+	if r != "" {
+		r = r[:len(r)-2]
+	}
+	return r
 }
 
 func (c *CookieJar) Save(path string) error {
@@ -246,21 +253,12 @@ func NewSession(opts ...ModifySessionOption) *Session {
 	return session
 }
 
-func Cookie2Map(cookie *http.Cookie) map[string]interface{} {
-	var _cookie map[string]interface{}
-	_ = mapstructure.Decode(cookie, &_cookie)
-	_cookie["Expires"] = (*cookie).Expires.Unix()
-	return _cookie
-}
-
 func (s *Session) SetUrl(_url string) *Session {
 	s.Url, _ = url.Parse(_url)
 	return s
 }
 
-func (s *Session) SetCookies(_url string, cookies []*http.Cookie) *Session {
-	Url, _ := url.Parse(_url)
-	s.Client.Jar.SetCookies(Url, cookies)
+func (s *Session) SetCookies(cookies []*http.Cookie) *Session {
 	for _, cookie := range cookies {
 		s.CookieJar.Set(cookie)
 	}
@@ -319,13 +317,8 @@ func (s *Session) Save(path string) error {
 	return s.CookieJar.Save(path)
 }
 
-func (s *Session) Load(path string, _url string) error {
-	err := s.CookieJar.Load(path)
-	if err != nil {
-		return err
-	}
-	s.SetCookies(_url, s.CookieJar.v)
-	return nil
+func (s *Session) Load(path string) error {
+	return s.CookieJar.Load(path)
 }
 
 func (s *Session) Request(method string, urlStr string, option Option) *Response {
@@ -350,6 +343,8 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 			}
 		}
 		s.request.Header.Set("User-Agent", userAgent)
+
+		s.request.Header.Set("Cookie", s.CookieJar.String())
 		// 是否保持 keep-alive, true 表示请求完毕后关闭 tcp 连接, 不再复用
 		//s.request.Close = true
 
@@ -361,19 +356,6 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 		}
 
 		if option != nil {
-			for cookieK, cookieV := range s.CookieJar.Map() {
-				cookieVS, ok := cookieV.(string)
-				if !ok {
-					return &Response{
-						Err: errors.New(fmt.Sprintf("cookie %v[%T] must be string type", cookieV, cookieV)),
-					}
-				}
-				c := &http.Cookie{
-					Name:  cookieK,
-					Value: cookieVS,
-				}
-				s.request.AddCookie(c)
-			}
 			err = option.setRequestOpt(s.request)
 			if err != nil {
 				return &Response{
@@ -471,12 +453,10 @@ func (s *Session) RegisterAfterRespHook(fn AfterResponseHookFunc) error {
 	return nil
 }
 
-func (s *Session) Copy(_url string) *Session {
+func (s *Session) Copy() *Session {
 	opt := s.option
 	session := NewSession(opt...)
 	session.CookieJar = s.CookieJar
-	session.SetCookies(_url, s.Cookies(_url))
-	session.SetCookies(_url, s.CookieJar.v)
 	return session
 }
 

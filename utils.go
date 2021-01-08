@@ -22,6 +22,13 @@ func TransferCookies(_cookies []map[string]interface{}) []*http.Cookie {
 	return cookies
 }
 
+func Cookie2Map(cookie *http.Cookie) map[string]interface{} {
+	var _cookie map[string]interface{}
+	_ = mapstructure.Decode(cookie, &_cookie)
+	_cookie["Expires"] = (*cookie).Expires.Unix()
+	return _cookie
+}
+
 func Exists(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil {
