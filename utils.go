@@ -63,3 +63,14 @@ func TransferCookie(c map[string]interface{}) (*http.Cookie, error) {
 	err = json.Unmarshal(cBytes, &cookie)
 	return cookie, err
 }
+
+func TransferCookies(c []map[string]interface{}) ([]*http.Cookie, error) {
+	var cookies []*http.Cookie
+	var err error
+	for _, c1 := range c {
+		var c2 *http.Cookie
+		c2, err = TransferCookie(c1)
+		cookies = append(cookies, c2)
+	}
+	return cookies, err
+}
