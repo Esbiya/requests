@@ -60,7 +60,7 @@ func (r *Response) JSON() (map[string]interface{}, error) {
 	// 将处理的数字转化成 json.Number 的形式，防止丢失精度
 	dec.UseNumber()
 	if err := dec.Decode(&result); err != nil {
-		return nil, ErrNotJSONResponse
+		return nil, err
 	}
 	return result, nil
 }
