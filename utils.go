@@ -3,7 +3,6 @@ package requests
 import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/wuxiaoxiaoshen/fakeuseragent/application"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -29,7 +28,6 @@ func TransferCookies(_cookies []map[string]interface{}) []*http.Cookie {
 
 func Cookie2Map(cookie *http.Cookie) map[string]interface{} {
 	var _cookie map[string]interface{}
-	log.Println(cookie.MaxAge)
 	_ = mapstructure.Decode(cookie, &_cookie)
 	_cookie["Expires"] = (*cookie).Expires.Unix()
 	return _cookie
