@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -219,10 +220,10 @@ func (j *CookieJar) cookies(u *url.URL, now time.Time) (cookies []*http.Cookie) 
 		return s[i].seqNum < s[j].seqNum
 	})
 	for _, e := range selected {
-		// 修复了读取cookie时缺少 Domain, 造成读取后的 cookie 请求失效问题
-		maxAge := int(e.Expires.Unix() - time.Now().Unix())
+		// 修复了读取 cookie 时缺少 Domain, 造成读取后的 cookie 请求失效问题
+		maxAge, _ := strconv.Atoi(strconv.FormatInt(e.Expires.Unix()-time.Now().Unix(), 10))
 		cookies = append(cookies, &http.Cookie{
-			Name: e.Name, Value: e.Value, Domain: e.Domain, Expires: e.Expires, MaxAge: maxAge,
+			Name: e.Name, Value: e.Value, Domain: e.Domain, MaxAge: maxAge,
 		})
 	}
 
