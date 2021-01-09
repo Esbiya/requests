@@ -250,13 +250,14 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 				Err: err,
 			}
 		}
-		s.request.Header.Set("User-Agent", userAgent)
+		s.request.Header.Set("User-Agent", RandomUserAgent(nil))
 		// 是否保持 keep-alive, true 表示请求完毕后关闭 tcp 连接, 不再复用
 		//s.request.Close = true
 
 		if s.Client == nil {
-			s.Client = &http.Client{}
 			s.CookieJar = NewCookieJar()
+			s.Client = &http.Client{}
+			s.Client.Jar = s.CookieJar
 			s.Client.Transport = &http.Transport{}
 		}
 
@@ -288,7 +289,6 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 			Err: ErrInvalidMethod,
 		}
 	}
-
 	r, err := s.Client.Do(s.request)
 	if err != nil {
 		return &Response{

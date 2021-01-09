@@ -16,7 +16,6 @@ import (
 )
 
 type CookieJar struct {
-	http.CookieJar
 	mu sync.Mutex
 
 	entries map[string]map[string]entry
@@ -221,7 +220,10 @@ func (j *CookieJar) cookies(u *url.URL, now time.Time) (cookies []*http.Cookie) 
 	})
 	for _, e := range selected {
 		// 修复了读取cookie时缺少 Domain, 造成读取后的 cookie 请求失效问题
-		cookies = append(cookies, &http.Cookie{Name: e.Name, Value: e.Value, Domain: e.Domain})
+		maxAge := int(e.Expires.Unix() - time.Now().Unix())
+		cookies = append(cookies, &http.Cookie{
+			Name: e.Name, Value: e.Value, Domain: e.Domain, Expires: e.Expires, MaxAge: maxAge,
+		})
 	}
 
 	return cookies

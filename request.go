@@ -4,10 +4,6 @@ import (
 	"errors"
 )
 
-const (
-	userAgent = "requests 1.0"
-)
-
 var (
 	ErrInvalidMethod = errors.New("requests: method is invalid")
 

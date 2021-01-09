@@ -1,31 +1,19 @@
 package requests
 
 import (
-	"encoding/json"
 	"log"
-	"net/http"
 	"testing"
 )
 
 func TestRequest(t *testing.T) {
-	session := NewSession()
-	resp := session.Get("https://www.baidu.com", RequestArgs{})
-	log.Println(resp.Cookies())
-	c1, _ := session.CookieJar.Array("")
-	x, _ := json.MarshalIndent(c1, "", "    ")
-	log.Println(string(x))
+	session := NewSession().SetProxy("http://127.0.0.1:8888").SetSkipVerifyTLS(false)
 
-	log.Println(session.CookieJar.String(""))
-
-	session.SetCookies("https://www.baidu.com", []*http.Cookie{
-		{
-			Name:  "BIDUPSID",
-			Value: "BIDUPSID",
-		},
-	})
-	log.Println(session.CookieJar.String(""))
-
-	session.SetProxy("http://127.0.0.1:8888")
+	url := "https://www.baidu.com"
 	session.Get("https://www.baidu.com", RequestArgs{})
-	log.Println(session.CookieJar.String("https://www.baidu.com"))
+	_ = session.CookieJar.Save("./cookies.json", url)
+
+	session1 := NewSession().SetProxy("http://127.0.0.1:8888")
+	log.Println(session1.CookieJar == session1.Client.Jar)
+	_ = session1.Load("./cookies.json", url)
+	session1.Get("https://www.baidu.com", RequestArgs{})
 }
