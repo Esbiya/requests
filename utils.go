@@ -1,8 +1,10 @@
 package requests
 
 import (
+	"encoding/json"
 	"github.com/wuxiaoxiaoshen/fakeuseragent/application"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -50,4 +52,14 @@ func RandomUserAgent(t interface{}) string {
 	default:
 		return fakeUserAgent.Random()
 	}
+}
+
+func TransferCookie(c map[string]interface{}) (*http.Cookie, error) {
+	var cookie *http.Cookie
+	cBytes, err := json.Marshal(c)
+	if err != nil {
+		return cookie, err
+	}
+	err = json.Unmarshal(cBytes, &cookie)
+	return cookie, err
 }
