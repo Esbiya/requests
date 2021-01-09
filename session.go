@@ -136,10 +136,7 @@ func NewSession(opts ...ModifySessionOption) *Session {
 		tranSport.Proxy = proxyUrl
 	}
 
-	cookieJar := NewCookieJar()
-
 	client := &http.Client{}
-	client.Jar = cookieJar
 	client.Transport = tranSport
 
 	if opt.allowRedirects {
@@ -150,10 +147,11 @@ func NewSession(opts ...ModifySessionOption) *Session {
 
 	session := &Session{
 		Url:       opt.url,
-		Client:    client,
 		option:    opts,
-		CookieJar: cookieJar,
+		CookieJar: NewCookieJar(),
 	}
+	client.Jar = session.CookieJar
+	session.Client = client
 
 	if session.Url != nil && opt.cookies != nil {
 		session.CookieJar.SetCookies(session.Url, opt.cookies)
