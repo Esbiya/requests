@@ -148,16 +148,14 @@ func (j *CookieJar) Load(path string, _url string) error {
 	if err != nil {
 		return errors.Wrap(err, "read cookies fail")
 	}
-	var cookies []*http.Cookie
+	var cookies []map[string]interface{}
 	err = json.Unmarshal(data, &cookies)
-	if err != nil {
-		return err
-	}
+
 	Url, err := url.Parse(_url)
 	if err != nil {
 		return errors.Wrap(err, "load cookies error")
 	}
-	j.SetCookies(Url, cookies)
+	j.SetCookies(Url, TransferCookies(cookies))
 	return nil
 }
 
