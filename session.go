@@ -358,6 +358,7 @@ func (s *Session) Copy() *Session {
 	opt := s.option
 	session := NewSession(opt...)
 	session.CookieJar = s.CookieJar
+	session.Client.Jar = s.CookieJar
 	return session
 }
 
