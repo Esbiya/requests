@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -84,20 +83,23 @@ func hasDotSuffix(s, suffix string) bool {
 	return len(s) > len(suffix) && s[len(s)-len(suffix)-1] == '.' && s[len(s)-len(suffix):] == suffix
 }
 
-func (j *CookieJar) Cookies(u *url.URL) (cookies []*http.Cookie) {
-	return j.cookies(u, time.Now())
-}
-
-func (j *CookieJar) Array(_url string) ([]map[string]interface{}, error) {
-	cookies := make([]map[string]interface{}, 0)
+func (j *CookieJar) Bytes(_url string) ([]byte, error) {
 	Url, err := url.Parse(_url)
 	if err != nil {
 		return nil, errors.Wrap(err, "query cookies error")
 	}
-	for _, cookie := range j.Cookies(Url) {
-		cookies = append(cookies, Cookie2Map(cookie))
+	cookies := j.Cookies(Url)
+	return json.MarshalIndent(cookies, "", "  ")
+}
+
+func (j *CookieJar) Array(_url string) ([]map[string]interface{}, error) {
+	cookies := make([]map[string]interface{}, 0)
+	cookieBytes, err := j.Bytes(_url)
+	if err != nil {
+		return nil, err
 	}
-	return cookies, nil
+	err = json.Unmarshal(cookieBytes, &cookies)
+	return cookies, err
 }
 
 func (j *CookieJar) Map(_url string) (map[string]interface{}, error) {
@@ -128,11 +130,7 @@ func (j *CookieJar) String(_url string) (string, error) {
 }
 
 func (j *CookieJar) Save(path string, _url string) error {
-	cookies, err := j.Array(_url)
-	if err != nil {
-		return errors.Wrap(err, "save cookies error")
-	}
-	data, _ := json.MarshalIndent(cookies, "", "  ")
+	data, err := j.Bytes(_url)
 	err = ioutil.WriteFile(path, data, 0777)
 	if err != nil {
 		return err
@@ -148,15 +146,19 @@ func (j *CookieJar) Load(path string, _url string) error {
 	if err != nil {
 		return errors.Wrap(err, "read cookies fail")
 	}
-	var cookies []map[string]interface{}
+	var cookies []*http.Cookie
 	err = json.Unmarshal(data, &cookies)
 
 	Url, err := url.Parse(_url)
 	if err != nil {
 		return errors.Wrap(err, "load cookies error")
 	}
-	j.SetCookies(Url, TransferCookies(cookies))
+	j.SetCookies(Url, cookies)
 	return nil
+}
+
+func (j *CookieJar) Cookies(u *url.URL) (cookies []*http.Cookie) {
+	return j.cookies(u, time.Now())
 }
 
 func (j *CookieJar) cookies(u *url.URL, now time.Time) (cookies []*http.Cookie) {
@@ -221,10 +223,7 @@ func (j *CookieJar) cookies(u *url.URL, now time.Time) (cookies []*http.Cookie) 
 	})
 	for _, e := range selected {
 		// 修复了读取 cookie 时缺少 Domain, 造成读取后的 cookie 请求失效问题
-		maxAge, _ := strconv.Atoi(strconv.FormatInt(e.Expires.Unix()-time.Now().Unix(), 10))
-		cookies = append(cookies, &http.Cookie{
-			Name: e.Name, Value: e.Value, Domain: e.Domain, MaxAge: maxAge,
-		})
+		cookies = append(cookies, &http.Cookie{Name: e.Name, Value: e.Value, Domain: e.Domain})
 	}
 
 	return cookies
@@ -242,7 +241,6 @@ func (j *CookieJar) setCookies(u *url.URL, cookies []*http.Cookie, now time.Time
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return
 	}
-	// There may be errors in setting local domain names, such as:.com.cm
 	host, err := canonicalHost(u.Host)
 	if err != nil {
 		return
@@ -349,12 +347,13 @@ func defaultPath(path string) string {
 	/*if len(path) == 0 || path[0] != '/' {
 		return "/"
 	}
+
 	i := strings.LastIndex(path, "/")
 	if i == 0 {
 		return "/"
 	}
 	return path[:i]*/
-	// 修复了设置 cookie 时 path 作用域的问题, 统一设置 /
+	// 修复了设置cookie时path作用域的问题，统一设置/
 	return "/"
 }
 

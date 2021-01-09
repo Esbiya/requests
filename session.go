@@ -63,9 +63,9 @@ func Proxy(_proxy string) ModifySessionOption {
 	}
 }
 
-func Cookies(_cookies []map[string]interface{}) ModifySessionOption {
+func Cookies(_cookies []*http.Cookie) ModifySessionOption {
 	return func(r *SessionArgs) {
-		r.cookies = TransferCookies(_cookies)
+		r.cookies = _cookies
 	}
 }
 
