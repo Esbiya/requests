@@ -2,29 +2,16 @@ package requests
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"net"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 )
 
-const (
-	SaveAsString = 1
-	SaveAsMap    = 2
-	SaveAsArray  = 3
-)
-
 type (
-	CookieJar struct {
-		sync.RWMutex
-		v []*http.Cookie
-	}
 	Session struct {
 		sync.Mutex
 		Url                    *url.URL
@@ -36,84 +23,6 @@ type (
 		option                 []ModifySessionOption
 	}
 )
-
-func (c *CookieJar) Set(c1 *http.Cookie) {
-	c.Lock()
-	for i, c2 := range c.v {
-		if c1.Name == c2.Name {
-			c.v = append(c.v[:i], c.v[i+1:]...)
-		}
-	}
-	c.v = append(c.v, c1)
-	c.Unlock()
-}
-
-func (c *CookieJar) Get() []*http.Cookie {
-	return c.v
-}
-
-func (c *CookieJar) Array() []map[string]interface{} {
-	cookies := make([]map[string]interface{}, 0)
-	c.RLock()
-	defer c.RUnlock()
-	for _, cookie := range c.v {
-		cookies = append(cookies, Cookie2Map(cookie))
-	}
-	return cookies
-}
-
-func (c *CookieJar) Map() map[string]interface{} {
-	cookies := map[string]interface{}{}
-	c.RLock()
-	defer c.RUnlock()
-	for _, cookie := range c.v {
-		cookies[(*cookie).Name] = (*cookie).Value
-	}
-	return cookies
-}
-
-func (c *CookieJar) String() string {
-	r := ""
-	c.RLock()
-	defer c.RUnlock()
-	for _, cookie := range c.v {
-		r += (*cookie).Name + "=" + (*cookie).Value + "; "
-	}
-	if r != "" {
-		r = r[:len(r)-2]
-	}
-	return r
-}
-
-func (c *CookieJar) Save(path string) error {
-	if len(c.v) == 0 {
-		return errors.New("cannot find any cookies")
-	}
-
-	data, _ := json.MarshalIndent(c.Array(), "", "  ")
-	err := ioutil.WriteFile(path, data, 0777)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *CookieJar) Load(path string) error {
-	if !Exists(path) {
-		return errors.New("no such file or directory")
-	}
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return errors.Wrap(err, "read cookies fail")
-	}
-	var cookies []map[string]interface{}
-	err = json.Unmarshal(data, &cookies)
-	if err != nil {
-		return err
-	}
-	c.v = TransferCookies(cookies)
-	return nil
-}
 
 var (
 	disableRedirect = func(req *http.Request, via []*http.Request) error {
@@ -227,9 +136,10 @@ func NewSession(opts ...ModifySessionOption) *Session {
 		tranSport.Proxy = proxyUrl
 	}
 
+	cookieJar := NewCookieJar()
+
 	client := &http.Client{}
-	jar, _ := cookiejar.New(nil)
-	client.Jar = jar
+	client.Jar = cookieJar
 	client.Transport = tranSport
 
 	if opt.allowRedirects {
@@ -239,16 +149,14 @@ func NewSession(opts ...ModifySessionOption) *Session {
 	}
 
 	session := &Session{
-		Url:    opt.url,
-		Client: client,
-		CookieJar: &CookieJar{
-			v: make([]*http.Cookie, 0),
-		},
-		option: opts,
+		Url:       opt.url,
+		Client:    client,
+		option:    opts,
+		CookieJar: cookieJar,
 	}
-	if opt.cookies != nil {
-		session.Client.Jar.SetCookies(opt.url, opt.cookies)
-		session.CookieJar.v = opt.cookies
+
+	if session.Url != nil && opt.cookies != nil {
+		session.CookieJar.SetCookies(session.Url, opt.cookies)
 	}
 	return session
 }
@@ -258,10 +166,12 @@ func (s *Session) SetUrl(_url string) *Session {
 	return s
 }
 
-func (s *Session) SetCookies(cookies []*http.Cookie) *Session {
-	for _, cookie := range cookies {
-		s.CookieJar.Set(cookie)
+func (s *Session) SetCookies(_url string, cookies []*http.Cookie) *Session {
+	Url, err := url.Parse(_url)
+	if err != nil {
+		panic("set cookies error: " + err.Error())
 	}
+	s.CookieJar.SetCookies(Url, cookies)
 	return s
 }
 
@@ -275,7 +185,7 @@ func (s *Session) Cookies(_url string) []*http.Cookie {
 	if Url == nil {
 		return []*http.Cookie{}
 	}
-	return s.Client.Jar.Cookies(Url)
+	return s.CookieJar.Cookies(Url)
 }
 
 func (s *Session) SetTimeout(timeout time.Duration) *Session {
@@ -313,12 +223,12 @@ func (s *Session) SetAllowRedirect(y bool) *Session {
 	return s
 }
 
-func (s *Session) Save(path string) error {
-	return s.CookieJar.Save(path)
+func (s *Session) Save(path string, _url string) error {
+	return s.CookieJar.Save(path, _url)
 }
 
-func (s *Session) Load(path string) error {
-	return s.CookieJar.Load(path)
+func (s *Session) Load(path string, _url string) error {
+	return s.CookieJar.Load(path, _url)
 }
 
 func (s *Session) Request(method string, urlStr string, option Option) *Response {
@@ -343,15 +253,12 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 			}
 		}
 		s.request.Header.Set("User-Agent", userAgent)
-
-		s.request.Header.Set("Cookie", s.CookieJar.String())
 		// 是否保持 keep-alive, true 表示请求完毕后关闭 tcp 连接, 不再复用
 		//s.request.Close = true
 
 		if s.Client == nil {
 			s.Client = &http.Client{}
-			jar, _ := cookiejar.New(nil)
-			s.Client.Jar = jar
+			s.CookieJar = NewCookieJar()
 			s.Client.Transport = &http.Transport{}
 		}
 
@@ -396,10 +303,6 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 		if err != nil {
 			break
 		}
-	}
-
-	for _, cookie := range r.Cookies() {
-		s.CookieJar.Set(cookie)
 	}
 
 	return NewResponse(r)

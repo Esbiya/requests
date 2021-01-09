@@ -3,6 +3,7 @@ package requests
 import (
 	"github.com/mitchellh/mapstructure"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 )
@@ -27,6 +28,11 @@ func Cookie2Map(cookie *http.Cookie) map[string]interface{} {
 	_ = mapstructure.Decode(cookie, &_cookie)
 	_cookie["Expires"] = (*cookie).Expires.Unix()
 	return _cookie
+}
+
+func ParseHost(_url string) string {
+	Url, _ := url.Parse(_url)
+	return Url.Host
 }
 
 func Exists(path string) bool {
