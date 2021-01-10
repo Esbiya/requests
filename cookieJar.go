@@ -21,15 +21,15 @@ func (s BaseCookies) Bytes() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-func (s BaseCookies) Array() ([]map[string]string, error) {
-	cookies := make([]map[string]string, 0)
+func (s BaseCookies) Array() ([]map[string]interface{}, error) {
+	cookies := make([]map[string]interface{}, 0)
 	b, err := s.Bytes()
 	err = json.Unmarshal(b, &cookies)
 	return cookies, err
 }
 
-func (s BaseCookies) Map() (map[string]string, error) {
-	cookies := map[string]string{}
+func (s BaseCookies) Map() (map[string]interface{}, error) {
+	cookies := map[string]interface{}{}
 	for _, cookie := range s {
 		cookies[(*cookie).Name] = (*cookie).Value
 	}
@@ -170,7 +170,7 @@ func (j *CookieJar) String(_url string) (string, error) {
 }
 
 func (j *CookieJar) Save(path string, _url string) error {
-	data, err := j.Bytes(_url)
+	data, err := j.Get(_url).Bytes()
 	err = ioutil.WriteFile(path, data, 0777)
 	if err != nil {
 		return err
