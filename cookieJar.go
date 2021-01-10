@@ -15,12 +15,52 @@ import (
 	"unicode/utf8"
 )
 
+type BaseCookies []*http.Cookie
+
+func (s BaseCookies) Bytes() ([]byte, error) {
+	return json.Marshal(s)
+}
+
+func (s BaseCookies) Array() ([]map[string]string, error) {
+	cookies := make([]map[string]string, 0)
+	b, err := s.Bytes()
+	err = json.Unmarshal(b, &cookies)
+	return cookies, err
+}
+
+func (s BaseCookies) Map() (map[string]string, error) {
+	cookies := map[string]string{}
+	for _, cookie := range s {
+		cookies[(*cookie).Name] = (*cookie).Value
+	}
+	return cookies, nil
+}
+
+func (s BaseCookies) String() (string, error) {
+	r := ""
+	for _, cookie := range s {
+		r += (*cookie).Name + "=" + (*cookie).Value + "; "
+	}
+	if r != "" {
+		r = r[:len(r)-2]
+	}
+	return r, nil
+}
+
 type CookieJar struct {
 	mu sync.Mutex
 
 	entries map[string]map[string]entry
 
 	nextSeqNum uint64
+}
+
+func (j *CookieJar) Get(_url string) (store BaseCookies) {
+	Url, err := url.Parse(_url)
+	if err != nil {
+		return store
+	}
+	return j.Cookies(Url)
 }
 
 func NewCookieJar() *CookieJar {
