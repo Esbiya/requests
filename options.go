@@ -279,11 +279,12 @@ func (h RequestArgs) setRequestOpt(req *http.Request) error {
 		for headerK, headerV := range h.Headers {
 			headerVS, ok := headerV.(string)
 			if !ok {
-				return fmt.Errorf(
-					"header %v[%T] must be string type",
-					headerV, headerV)
+				return fmt.Errorf("header %v[%T] must be string type", headerV, headerV)
 			}
 			req.Header[headerK] = []string{headerVS}
+			if headerK == "Connection" && headerV == "close" {
+				req.Close = true
+			}
 		}
 	}
 

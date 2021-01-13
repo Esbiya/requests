@@ -191,8 +191,8 @@ func (s *Session) SetTimeout(timeout time.Duration) *Session {
 	return s
 }
 
-func (s *Session) SetSkipVerifyTLS(ssl bool) *Session {
-	s.Client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = ssl
+func (s *Session) SetSkipVerifyTLS(skip bool) *Session {
+	s.Client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = skip
 	return s
 }
 
@@ -251,8 +251,6 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 			}
 		}
 		s.request.Header.Set("User-Agent", RandomUserAgent(nil))
-		// 是否保持 keep-alive, true 表示请求完毕后关闭 tcp 连接, 不再复用
-		s.request.Close = true
 
 		if s.Client == nil {
 			s.CookieJar = NewCookieJar()
