@@ -282,8 +282,8 @@ func (h RequestArgs) setRequestOpt(req *http.Request) error {
 				return fmt.Errorf("header %v[%T] must be string type", headerV, headerV)
 			}
 			req.Header[headerK] = []string{headerVS}
-			if headerK == "Connection" && headerV == "close" {
-				req.Close = true
+			if headerK == "Connection" && headerV == "keep-alive" {
+				req.Close = false
 			}
 		}
 	}

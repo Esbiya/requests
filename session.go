@@ -251,6 +251,7 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 			}
 		}
 		s.request.Header.Set("User-Agent", RandomUserAgent(nil))
+		s.request.Close = true
 
 		if s.Client == nil {
 			s.CookieJar = NewCookieJar()
