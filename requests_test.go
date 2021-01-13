@@ -16,5 +16,4 @@ func TestRequest(t *testing.T) {
 
 	session := NewSession()
 	session.CookieJar.Get("https://jd.com/").String()
-
 }

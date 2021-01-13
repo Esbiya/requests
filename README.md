@@ -329,6 +329,4 @@ resp.Cookies()           // 响应 cookies, []*http.Cookie
 resp.Location()          // 跳转 url
 resp.ContentLength       // 响应内容大小
 resp.Close               // tcp 连接是否已关闭 bool
-
 ```
-

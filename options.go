@@ -29,7 +29,7 @@ type (
 		JSON    DataMap
 		Files   DataMap
 
-		AllowRedirect      bool
+		AllowRedirects     bool
 		Timeout            int64
 		Chunked            bool
 		DisableKeepAlive   bool
@@ -332,7 +332,7 @@ func (h RequestArgs) setRequestOpt(req *http.Request) error {
 }
 
 func (h RequestArgs) setClientOpt(client *http.Client) error {
-	if !h.AllowRedirect {
+	if !h.AllowRedirects {
 		client.CheckRedirect = disableRedirect
 	}
 
