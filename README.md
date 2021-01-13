@@ -311,6 +311,12 @@ session.CookieJar.Map("https://jd.com/")
 session.CookieJar.Array("https://jd.com/")
 ```
 
+### session 复制
+
+```
+session1 := session.Copy()
+```
+
 ### 响应
 
 ```go
