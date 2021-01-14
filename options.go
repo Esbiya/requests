@@ -243,7 +243,7 @@ func setJSON(req *http.Request, j DataMap, chunked bool) error {
 	return nil
 }
 
-func (h RequestArgs) setRequestOpt(req *http.Request) error {
+func (h *RequestArgs) setRequestOpt(req *http.Request) error {
 	if h.isConflict() {
 		return ErrParamConflict
 	}
@@ -324,7 +324,7 @@ func (h RequestArgs) setRequestOpt(req *http.Request) error {
 	return nil
 }
 
-func (h RequestArgs) setClientOpt(client *http.Client) error {
+func (h *RequestArgs) setClientOpt(client *http.Client) error {
 	if !h.AllowRedirects {
 		client.CheckRedirect = disableRedirect
 	}
