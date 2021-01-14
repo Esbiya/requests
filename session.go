@@ -14,13 +14,14 @@ import (
 type (
 	Session struct {
 		sync.Mutex
-		Url                    *url.URL
-		Client                 *http.Client
-		CookieJar              *CookieJar
-		request                *http.Request
-		beforeRequestHookFuncs []BeforeRequestHookFunc
-		afterResponseHookFuncs []AfterResponseHookFunc
-		option                 []ModifySessionOption
+		Url                        *url.URL
+		Client                     *http.Client
+		CookieJar                  *CookieJar
+		request                    *http.Request
+		beforeRequestHookFuncs     []BeforeRequestHookFunc
+		afterResponseHookFuncs     []AfterResponseHookFunc
+		beforeRequestArgsHookFuncs []BeforeRequestArgsHookFunc
+		option                     []ModifySessionOption
 	}
 )
 
@@ -229,13 +230,21 @@ func (s *Session) Load(path string, _url string) error {
 	return s.CookieJar.Load(path, _url)
 }
 
-func (s *Session) Request(method string, urlStr string, option Option) *Response {
+func (s *Session) Request(method string, urlStr string, args RequestArgs) *Response {
 	s.Lock()
 	defer s.Unlock()
 
 	method = strings.ToUpper(method)
 	switch method {
 	case HEAD, GET, POST, DELETE, OPTIONS, PUT, PATCH:
+
+		for _, fn := range s.beforeRequestArgsHookFuncs {
+			err := fn(&args)
+			if err != nil {
+				break
+			}
+		}
+
 		urlStrParsed, err := url.Parse(urlStr)
 		if err != nil {
 			return &Response{
@@ -260,15 +269,15 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 			s.Client.Transport = &http.Transport{}
 		}
 
-		if option != nil {
-			err = option.setRequestOpt(s.request)
+		if &args != nil {
+			err = args.setRequestOpt(s.request)
 			if err != nil {
 				return &Response{
 					Err: err,
 				}
 			}
 
-			err = option.setClientOpt(s.Client)
+			err = args.setClientOpt(s.Client)
 			if err != nil {
 				return &Response{
 					Err: err,
@@ -295,18 +304,19 @@ func (s *Session) Request(method string, urlStr string, option Option) *Response
 		}
 	}
 
+	resp := NewResponse(r)
+
 	for _, fn := range s.afterResponseHookFuncs {
-		err = fn(r)
+		err = fn(resp)
 		if err != nil {
 			break
 		}
 	}
-
-	return NewResponse(r)
+	return resp
 }
 
-func (s *Session) AsyncRequest(method string, urlStr string, option Option, ch chan *Response) {
-	response := s.Request(method, urlStr, option)
+func (s *Session) AsyncRequest(method string, urlStr string, args RequestArgs, ch chan *Response) {
+	response := s.Request(method, urlStr, args)
 	ch <- response
 }
 
@@ -315,8 +325,9 @@ func (s *Session) GetRequest() *http.Request {
 }
 
 type (
-	BeforeRequestHookFunc func(*http.Request) error
-	AfterResponseHookFunc func(*http.Response) error
+	BeforeRequestArgsHookFunc func(*RequestArgs) error
+	BeforeRequestHookFunc     func(*http.Request) error
+	AfterResponseHookFunc     func(*Response) error
 )
 
 func (s *Session) RegisterBeforeReqHook(fn BeforeRequestHookFunc) error {
@@ -327,6 +338,17 @@ func (s *Session) RegisterBeforeReqHook(fn BeforeRequestHookFunc) error {
 		return ErrHookFuncMaxLimit
 	}
 	s.beforeRequestHookFuncs = append(s.beforeRequestHookFuncs, fn)
+	return nil
+}
+
+func (s *Session) RegisterBeforeRequestArgsHook(fn BeforeRequestArgsHookFunc) error {
+	if s.beforeRequestArgsHookFuncs == nil {
+		s.beforeRequestArgsHookFuncs = make([]BeforeRequestArgsHookFunc, 0, 8)
+	}
+	if len(s.beforeRequestArgsHookFuncs) > 7 {
+		return ErrHookFuncMaxLimit
+	}
+	s.beforeRequestArgsHookFuncs = append(s.beforeRequestArgsHookFuncs, fn)
 	return nil
 }
 
@@ -373,58 +395,58 @@ func (s *Session) ResetAfterRespHook() {
 	s.afterResponseHookFuncs = []AfterResponseHookFunc{}
 }
 
-func (s *Session) Get(url string, option Option) *Response {
-	return s.Request("get", url, option)
+func (s *Session) Get(url string, args RequestArgs) *Response {
+	return s.Request("get", url, args)
 }
 
-func (s *Session) AsyncGet(url string, option Option, ch chan *Response) {
-	go s.AsyncRequest("get", url, option, ch)
+func (s *Session) AsyncGet(url string, args RequestArgs, ch chan *Response) {
+	go s.AsyncRequest("get", url, args, ch)
 }
 
-func (s *Session) Post(url string, option Option) *Response {
-	return s.Request("post", url, option)
+func (s *Session) Post(url string, args RequestArgs) *Response {
+	return s.Request("post", url, args)
 }
 
-func (s *Session) AsyncPost(url string, option Option, ch chan *Response) {
-	go s.AsyncRequest("post", url, option, ch)
+func (s *Session) AsyncPost(url string, args RequestArgs, ch chan *Response) {
+	go s.AsyncRequest("post", url, args, ch)
 }
 
-func (s *Session) Head(url string, option Option) *Response {
-	return s.Request("head", url, option)
+func (s *Session) Head(url string, args RequestArgs) *Response {
+	return s.Request("head", url, args)
 }
 
-func (s *Session) AsyncHead(url string, option Option, ch chan *Response) {
-	go s.AsyncRequest("head", url, option, ch)
+func (s *Session) AsyncHead(url string, args RequestArgs, ch chan *Response) {
+	go s.AsyncRequest("head", url, args, ch)
 }
 
-func (s *Session) Delete(url string, option Option) *Response {
-	return s.Request("delete", url, option)
+func (s *Session) Delete(url string, args RequestArgs) *Response {
+	return s.Request("delete", url, args)
 }
 
-func (s *Session) AsyncDelete(url string, option Option, ch chan *Response) {
-	go s.AsyncRequest("delete", url, option, ch)
+func (s *Session) AsyncDelete(url string, args RequestArgs, ch chan *Response) {
+	go s.AsyncRequest("delete", url, args, ch)
 }
 
-func (s *Session) Options(url string, option Option) *Response {
-	return s.Request("options", url, option)
+func (s *Session) Options(url string, args RequestArgs) *Response {
+	return s.Request("options", url, args)
 }
 
-func (s *Session) AsyncOptions(url string, option Option, ch chan *Response) {
-	go s.AsyncRequest("options", url, option, ch)
+func (s *Session) AsyncOptions(url string, args RequestArgs, ch chan *Response) {
+	go s.AsyncRequest("options", url, args, ch)
 }
 
-func (s *Session) Put(url string, option Option) *Response {
-	return s.Request("put", url, option)
+func (s *Session) Put(url string, args RequestArgs) *Response {
+	return s.Request("put", url, args)
 }
 
-func (s *Session) AsyncPut(url string, option Option, ch chan *Response) {
-	go s.AsyncRequest("put", url, option, ch)
+func (s *Session) AsyncPut(url string, args RequestArgs, ch chan *Response) {
+	go s.AsyncRequest("put", url, args, ch)
 }
 
-func (s *Session) Patch(url string, option Option) *Response {
-	return s.Request("patch", url, option)
+func (s *Session) Patch(url string, args RequestArgs) *Response {
+	return s.Request("patch", url, args)
 }
 
-func (s *Session) AsyncPatch(url string, option Option, ch chan *Response) {
-	go s.AsyncRequest("patch", url, option, ch)
+func (s *Session) AsyncPatch(url string, args RequestArgs, ch chan *Response) {
+	go s.AsyncRequest("patch", url, args, ch)
 }

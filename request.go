@@ -30,72 +30,72 @@ const (
 	PATCH   = "PATCH"
 )
 
-func Get(url string, option Option) *Response {
+func Get(url string, args RequestArgs) *Response {
 	session := NewSession()
-	return session.Get(url, option)
+	return session.Get(url, args)
 }
 
-func AsyncGet(url string, option Option, ch chan *Response) {
+func AsyncGet(url string, args RequestArgs, ch chan *Response) {
 	session := NewSession()
-	go session.AsyncGet(url, option, ch)
+	go session.AsyncGet(url, args, ch)
 }
 
-func Post(url string, option Option) *Response {
+func Post(url string, args RequestArgs) *Response {
 	session := NewSession()
-	return session.Post(url, option)
+	return session.Post(url, args)
 }
 
-func AsyncPost(url string, option Option, ch chan *Response) {
+func AsyncPost(url string, args RequestArgs, ch chan *Response) {
 	session := NewSession()
-	go session.AsyncPost(url, option, ch)
+	go session.AsyncPost(url, args, ch)
 }
 
-func Head(url string, option Option) *Response {
+func Head(url string, args RequestArgs) *Response {
 	session := NewSession()
-	return session.Head(url, option)
+	return session.Head(url, args)
 }
 
-func AsyncHead(url string, option Option, ch chan *Response) {
+func AsyncHead(url string, args RequestArgs, ch chan *Response) {
 	session := NewSession()
-	go session.AsyncHead(url, option, ch)
+	go session.AsyncHead(url, args, ch)
 }
 
-func Delete(url string, option Option) *Response {
+func Delete(url string, args RequestArgs) *Response {
 	session := NewSession()
-	return session.Delete(url, option)
+	return session.Delete(url, args)
 }
 
-func AsyncDelete(url string, option Option, ch chan *Response) {
+func AsyncDelete(url string, args RequestArgs, ch chan *Response) {
 	session := NewSession()
-	go session.AsyncDelete(url, option, ch)
+	go session.AsyncDelete(url, args, ch)
 }
 
-func Options(url string, option Option) *Response {
+func Options(url string, args RequestArgs) *Response {
 	session := NewSession()
-	return session.Options(url, option)
+	return session.Options(url, args)
 }
 
-func AsyncOption(url string, option Option, ch chan *Response) {
+func AsyncOption(url string, args RequestArgs, ch chan *Response) {
 	session := NewSession()
-	go session.AsyncOptions(url, option, ch)
+	go session.AsyncOptions(url, args, ch)
 }
 
-func Put(url string, option Option) *Response {
+func Put(url string, args RequestArgs) *Response {
 	session := NewSession()
-	return session.Put(url, option)
+	return session.Put(url, args)
 }
 
-func AsyncPut(url string, option Option, ch chan *Response) {
+func AsyncPut(url string, args RequestArgs, ch chan *Response) {
 	session := NewSession()
-	go session.AsyncPut(url, option, ch)
+	go session.AsyncPut(url, args, ch)
 }
 
-func Patch(url string, option Option) *Response {
+func Patch(url string, args RequestArgs) *Response {
 	session := NewSession()
-	return session.Patch(url, option)
+	return session.Patch(url, args)
 }
 
-func AsyncPatch(url string, option Option, ch chan *Response) {
+func AsyncPatch(url string, args RequestArgs, ch chan *Response) {
 	session := NewSession()
-	go session.AsyncPatch(url, option, ch)
+	go session.AsyncPatch(url, args, ch)
 }

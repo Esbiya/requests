@@ -49,6 +49,15 @@ if resp.StatusCode != http.StatusOK {
 log.Println(resp.Text)
 ```
 
+### 异步 get 请求
+
+```
+c := make(*Response, 1)
+c := make(chan *Response, 1)
+requests.AsyncGet(url, RequestArgs{}, c)
+log.Println((<-c).JSON())
+```
+
 ### post form 请求
 
 ```go
@@ -67,6 +76,15 @@ if resp.StatusCode != http.StatusOK {
 	log.Fatal("状态码异常")
 }
 log.Println(resp.Text)
+```
+
+### 异步 post 请求
+
+```
+c := make(*Response, 1)
+c := make(chan *Response, 1)
+requests.AsyncPost(url, RequestArgs{}, c)
+log.Println((<-c).JSON())
 ```
 
 ### post json 请求
@@ -269,7 +287,7 @@ session := requests.NewSession(
 )
 ```
 
-​		或者:
+或者:
 
 ```go
 session := requests.NewSession().
@@ -290,10 +308,28 @@ session := requests.NewSession().
 resp := session.Get("http://www.baidu.com/", requests.RequestsArgs{})
 ```
 
+### 异步 session get 请求
+
+```
+c := make(*Response, 1)
+c := make(chan *Response, 1)
+session.AsyncGet(url, RequestArgs{}, c)
+log.Println((<-c).JSON())
+```
+
 ### session post 请求
 
 ```go
 resp := session.Post("http://www.baidu.com/", requests.RequestArgs{})
+```
+
+### 异步 session post 请求
+
+```
+c := make(*Response, 1)
+c := make(chan *Response, 1)
+session.AsyncPost(url, RequestArgs{}, c)
+log.Println((<-c).JSON())
 ```
 
 ### 获取 session cookies
@@ -315,6 +351,44 @@ session.CookieJar.Array("https://jd.com/")
 
 ```
 session1 := session.Copy()
+```
+
+### session 中间件注册
+
+* 请求前对请求参数预处理, 如对请求参数进行排序加签操作
+
+```
+_ = session.RegisterBeforeRequestArgsHook(func(args *RequestArgs) error {
+	args.Proxy = "http://127.0.0.1:8888"
+	args.SkipVerifyTLS = false
+	// 对 params 进行排序拼接 base64 加签
+	signature := ""
+	EachMap(args.Params, func(key string, value interface{}) {
+		signature += key + "=" + value.(string)
+	})
+	args.Params["signature"] = base64.StdEncoding.EncodeToString([]byte(signature))
+	return nil
+})
+```
+
+* 请求前对请求对象进行预处理
+
+```
+_ = session.RegisterBeforeReqHook(func(request *http.Request) error {
+	request.Close = true
+	return nil
+})
+```
+
+* 请求完成对响应进行预处理, 如将加密响应解密成明文
+
+```
+_ = session.RegisterAfterRespHook(func(response *Response) error {
+	var err error
+	response.Bytes, err = base64.StdEncoding.DecodeString(response.Text)
+	response.Text = string(response.Bytes)
+	return err
+})
 ```
 
 ### 响应

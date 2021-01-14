@@ -83,11 +83,6 @@ func escapeQuotes(s string) string {
 	return quoteEscaper.Replace(s)
 }
 
-type Option interface {
-	setRequestOpt(*http.Request) error
-	setClientOpt(*http.Client) error
-}
-
 func (h RequestArgs) isConflict() bool {
 	count := 0
 	if h.Data != nil {
@@ -306,9 +301,7 @@ func (h RequestArgs) setRequestOpt(req *http.Request) error {
 		for k, v := range h.Auth {
 			vs, ok := v.(string)
 			if !ok {
-				return fmt.Errorf(
-					"basic-auth %v[%T] must be string type",
-					v, v)
+				return fmt.Errorf("basic-auth %v[%T] must be string type", v, v)
 			}
 			req.SetBasicAuth(k, vs)
 		}
