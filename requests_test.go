@@ -2,111 +2,131 @@ package requests
 
 import (
 	"encoding/base64"
-	"github.com/pkg/errors"
+	"encoding/json"
+	"fmt"
+	"github.com/forgoer/openssl"
+	"github.com/gofrs/uuid"
 	"log"
-	"net/http"
-	"reflect"
-	"sort"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 )
 
-func EachMap(eachMap interface{}, eachFunc interface{}) {
-	eachMapValue := reflect.ValueOf(eachMap)
-	eachFuncValue := reflect.ValueOf(eachFunc)
-	eachMapType := eachMapValue.Type()
-	eachFuncType := eachFuncValue.Type()
-	if eachMapValue.Kind() != reflect.Map {
-		panic(errors.New("ksort.EachMap failed. parameter \"eachMap\" type must is map[...]...{}"))
-	}
-	if eachFuncValue.Kind() != reflect.Func {
-		panic(errors.New("ksort.EachMap failed. parameter \"eachFunc\" type must is func(key ..., value ...)"))
-	}
-	if eachFuncType.NumIn() != 2 {
-		panic(errors.New("ksort.EachMap failed. \"eachFunc\" input parameter count must is 2"))
-	}
-	if eachFuncType.In(0).Kind() != eachMapType.Key().Kind() {
-		panic(errors.New("ksort.EachMap failed. \"eachFunc\" input parameter 1 type not equal of \"eachMap\" key"))
-	}
-	if eachFuncType.In(1).Kind() != eachMapType.Elem().Kind() {
-		panic(errors.New("ksort.EachMap failed. \"eachFunc\" input parameter 2 type not equal of \"eachMap\" value"))
-	}
+func genKey() string {
+	UUID, _ := uuid.NewV4()
+	return strings.Replace(UUID.String(), "-", "", -1)[:24]
+}
 
-	// 对 key 进行排序
-	// 获取排序后 map 的 key 和 value，作为参数调用 eachFunc 即可
-	switch eachMapType.Key().Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		keys := make([]int, 0)
-		keysMap := map[int]reflect.Value{}
-		for _, value := range eachMapValue.MapKeys() {
-			keys = append(keys, int(value.Int()))
-			keysMap[int(value.Int())] = value
+func convertToBin(n int, bin int) string {
+	var b string
+	switch {
+	case n == 0:
+		for i := 0; i < bin; i++ {
+			b += "0"
 		}
-		sort.Ints(keys)
-		for _, key := range keys {
-			eachFuncValue.Call([]reflect.Value{keysMap[key], eachMapValue.MapIndex(keysMap[key])})
+	case n > 0:
+		for ; n > 0; n /= 2 {
+			b = strconv.Itoa(n%2) + b
 		}
-	case reflect.Float64, reflect.Float32:
-		keys := make([]float64, 0)
-		keysMap := map[float64]reflect.Value{}
-		for _, value := range eachMapValue.MapKeys() {
-			keys = append(keys, value.Float())
-			keysMap[value.Float()] = value
+		j := bin - len(b)
+		for i := 0; i < j; i++ {
+			b = "0" + b
 		}
-		sort.Float64s(keys)
-		for _, key := range keys {
-			eachFuncValue.Call([]reflect.Value{keysMap[key], eachMapValue.MapIndex(keysMap[key])})
+	case n < 0:
+		n = n * -1
+		s := convertToBin(n, bin)
+		for i := 0; i < len(s); i++ {
+			if s[i:i+1] == "1" {
+				b += "0"
+			} else {
+				b += "1"
+			}
 		}
-	case reflect.String:
-		keys := make([]string, 0)
-		keysMap := map[string]reflect.Value{}
-		for _, value := range eachMapValue.MapKeys() {
-			keys = append(keys, value.String())
-			keysMap[value.String()] = value
+		n, err := strconv.ParseInt(b, 2, 64)
+		if err != nil {
+			fmt.Println(err)
 		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			eachFuncValue.Call([]reflect.Value{keysMap[key], eachMapValue.MapIndex(keysMap[key])})
-		}
-	default:
-		panic(errors.New("\"eachMap\" key type must is int or float or string"))
+		b = convertToBin(int(n+1), bin)
 	}
+	return b
+}
+
+func genCipher(data string) string {
+	result := ""
+	for i := 0; i < len(data); i++ {
+		j := convertToBin(int(data[i]), 2)
+		result += j + " "
+	}
+	return result[:len(result)-1]
 }
 
 func TestRequest(t *testing.T) {
-	url := "https://www.baidu.com/"
+	url := "http://wenshuapp.court.gov.cn/appinterface/rest.q4w"
 
-	session := NewSession()
+	session := NewSession().SetProxy("http://127.0.0.1:8888").SetSkipVerifyTLS(true)
+	headers := DataMap{
+		"Content-Type": "application/x-www-form-urlencoded",
+		"User-Agent":   "Dalvik/2.1.0 (Linux; U; Android 8.0.0; Google Nexus 5X Build/OPR6.170623.017)",
+		"Host":         "wenshuapp.court.gov.cn",
+	}
+	now := time.Now()
+	UUID, _ := uuid.NewV4()
+
+	key := genKey()
+	iv := fmt.Sprintf("%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"))
+	timestamp := strconv.FormatInt(now.UnixNano()/1e6, 10)
 
 	_ = session.RegisterBeforeRequestArgsHook(func(args *RequestArgs) error {
-		args.Proxy = "http://127.0.0.1:8888"
-		args.SkipVerifyTLS = false
-		// 对 params 进行排序拼接 base64 加签
-		signature := ""
-		EachMap(args.Params, func(key string, value interface{}) {
-			signature += key + "=" + value.(string)
-		})
-		args.Params["signature"] = base64.StdEncoding.EncodeToString([]byte(signature))
-		return nil
-	})
-	_ = session.RegisterBeforeReqHook(func(request *http.Request) error {
-		request.Close = true
-		return nil
+		encryptStr, err := openssl.Des3CBCEncrypt([]byte(timestamp), []byte(key), []byte(iv), openssl.PKCS7_PADDING)
+		if err != nil {
+			return err
+		}
+		args.Data["params"].(map[string]interface{})["ciphertext"] = genCipher(key + iv + base64.StdEncoding.EncodeToString(encryptStr))
+
+		d, err := json.Marshal(args.Data)
+		args.Data = DataMap{
+			"request": base64.StdEncoding.EncodeToString(d),
+		}
+		return err
 	})
 	_ = session.RegisterAfterRespHook(func(response *Response) error {
-		var err error
-		response.Bytes, err = base64.StdEncoding.DecodeString(response.Text)
-		response.Text = string(response.Bytes)
+		result, err := response.JSON()
+		if err != nil {
+			return err
+		}
+		data := result["data"].(map[string]interface{})
+		if _, ok := data["secretKey"]; ok {
+			b, _ := base64.StdEncoding.DecodeString(data["content"].(string))
+			response.Bytes, err = openssl.Des3CBCDecrypt(b, []byte(data["secretKey"].(string)), []byte(iv), openssl.PKCS7_PADDING)
+			if err != nil {
+				return err
+			}
+			response.Text = string(response.Bytes)
+		}
 		return err
 	})
 
-	params := DataMap{
-		"xxx": "222",
-		"aaa": "heheh",
+	data := DataMap{
+		"id":      fmt.Sprintf("%s%s%s%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"), now.Format("15"), now.Format("04"), now.Format("05")),
+		"command": "queryDoc",
+		"params": map[string]interface{}{
+			"devid":    strings.Replace(UUID.String(), "-", "", -1),
+			"devtype":  "1",
+			"pageSize": "20", "sortFields": "s50:desc", "pageNum": "1",
+			"queryCondition": []map[string]interface{}{
+				{"key": "s2", "value": "四川省成都市中级人民法院"},
+			},
+		},
 	}
-	resp := session.Get(url, RequestArgs{SkipVerifyTLS: true, Params: params})
-	log.Println(resp.Text)
-
-	c := make(chan *Response, 1)
-	session.AsyncGet(url, RequestArgs{}, c)
-	log.Println((<-c).JSON())
+	resp := session.Post(url, RequestArgs{
+		Headers: headers,
+		Data:    data,
+	})
+	if resp.Err != nil {
+		panic(resp.Err)
+	}
+	result, _ := resp.JSON()
+	xx, _ := json.MarshalIndent(result, "", "    ")
+	log.Println(string(xx))
 }
