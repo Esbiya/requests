@@ -347,6 +347,18 @@ session.CookieJar.Map("https://jd.com/")
 session.CookieJar.Array("https://jd.com/")
 ```
 
+### 获取 session 其他设置
+
+```
+url := session.GetUrl()
+proxy := session.GetProxy()
+timeout := session.GetTimeout()
+ssl := session.GetSkipVerifyTLS()
+allowRedirects := session.GetAllowRedirects()
+disableKeepAlive := session.GetDisableKeepAlive()
+disableCompression := session.GetDisableCompression()
+```
+
 ### session 复制
 
 ```

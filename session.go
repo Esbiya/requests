@@ -22,6 +22,7 @@ type (
 		afterResponseHookFuncs     []AfterResponseHookFunc
 		beforeRequestArgsHookFuncs []BeforeRequestArgsHookFunc
 		option                     []ModifySessionOption
+		args                       SessionArgs
 	}
 )
 
@@ -39,7 +40,7 @@ var (
 )
 
 type SessionArgs struct {
-	url                *url.URL
+	url                string
 	cookies            []*http.Cookie
 	proxy              string
 	timeout            time.Duration
@@ -54,7 +55,7 @@ type ModifySessionOption func(session *SessionArgs)
 
 func Url(_url string) ModifySessionOption {
 	return func(r *SessionArgs) {
-		r.url, _ = url.Parse(_url)
+		r.url = _url
 	}
 }
 
@@ -107,7 +108,7 @@ func AllowRedirects(_allowRedirects bool) ModifySessionOption {
 }
 
 func NewSession(opts ...ModifySessionOption) *Session {
-	opt := SessionArgs{
+	args := SessionArgs{
 		proxy:              "",
 		timeout:            30 * time.Second,
 		skipVerifyTLS:      false,
@@ -117,22 +118,22 @@ func NewSession(opts ...ModifySessionOption) *Session {
 	}
 
 	for _, f := range opts {
-		f(&opt)
+		f(&args)
 	}
 
 	tranSport := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   opt.timeout,
-			KeepAlive: opt.timeout,
+			Timeout:   args.timeout,
+			KeepAlive: args.timeout,
 		}).DialContext,
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: opt.skipVerifyTLS,
+			InsecureSkipVerify: args.skipVerifyTLS,
 		},
-		DisableKeepAlives:  opt.disableKeepAlive,
-		DisableCompression: opt.disableCompression,
+		DisableKeepAlives:  args.disableKeepAlive,
+		DisableCompression: args.disableCompression,
 	}
-	if opt.proxy != "" {
-		Url, _ := url.Parse(opt.proxy)
+	if args.proxy != "" {
+		Url, _ := url.Parse(args.proxy)
 		proxyUrl := http.ProxyURL(Url)
 		tranSport.Proxy = proxyUrl
 	}
@@ -140,29 +141,36 @@ func NewSession(opts ...ModifySessionOption) *Session {
 	client := &http.Client{}
 	client.Transport = tranSport
 
-	if opt.allowRedirects {
+	if args.allowRedirects {
 		client.CheckRedirect = defaultCheckRedirect
 	} else {
 		client.CheckRedirect = disableRedirect
 	}
 
+	Url, _ := url.Parse(args.url)
 	session := &Session{
-		Url:       opt.url,
+		Url:       Url,
 		option:    opts,
 		CookieJar: NewCookieJar(),
+		args:      args,
 	}
 	client.Jar = session.CookieJar
 	session.Client = client
 
-	if session.Url != nil && opt.cookies != nil {
-		session.CookieJar.SetCookies(session.Url, opt.cookies)
+	if session.Url != nil && args.cookies != nil {
+		session.CookieJar.SetCookies(session.Url, args.cookies)
 	}
 	return session
 }
 
 func (s *Session) SetUrl(_url string) *Session {
 	s.Url, _ = url.Parse(_url)
+	s.args.url = _url
 	return s
+}
+
+func (s *Session) GetUrl() string {
+	return s.args.url
 }
 
 func (s *Session) SetCookies(_url string, cookies []*http.Cookie) *Session {
@@ -174,7 +182,7 @@ func (s *Session) SetCookies(_url string, cookies []*http.Cookie) *Session {
 	return s
 }
 
-func (s *Session) Cookies(_url string) []*http.Cookie {
+func (s *Session) GetCookies(_url string) []*http.Cookie {
 	var Url *url.URL
 	if _url == "" {
 		Url = s.Url
@@ -189,18 +197,33 @@ func (s *Session) Cookies(_url string) []*http.Cookie {
 
 func (s *Session) SetTimeout(timeout time.Duration) *Session {
 	s.Client.Timeout = timeout
+	s.args.timeout = timeout
 	return s
+}
+
+func (s *Session) GetTimeout() time.Duration {
+	return s.args.timeout
 }
 
 func (s *Session) SetSkipVerifyTLS(skip bool) *Session {
 	s.Client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = skip
+	s.args.skipVerifyTLS = skip
 	return s
+}
+
+func (s *Session) GetSkipVerifyTLS() bool {
+	return s.args.skipVerifyTLS
 }
 
 func (s *Session) SetProxy(proxy string) *Session {
 	proxyUrl, _ := url.Parse(proxy)
 	s.Client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyUrl)
+	s.args.proxy = proxy
 	return s
+}
+
+func (s *Session) GetProxy() string {
+	return s.args.proxy
 }
 
 func (s *Session) SetDisableKeepAlive(disable bool) *Session {
@@ -208,18 +231,30 @@ func (s *Session) SetDisableKeepAlive(disable bool) *Session {
 	return s
 }
 
+func (s *Session) GetDisableKeepAlive() bool {
+	return s.args.disableKeepAlive
+}
+
 func (s *Session) SetDisableCompression(disable bool) *Session {
 	s.Client.Transport.(*http.Transport).DisableCompression = disable
 	return s
 }
 
-func (s *Session) SetAllowRedirect(y bool) *Session {
+func (s *Session) GetDisableCompression() bool {
+	return s.args.disableCompression
+}
+
+func (s *Session) SetAllowRedirects(y bool) *Session {
 	if y {
 		s.Client.CheckRedirect = defaultCheckRedirect
 	} else {
 		s.Client.CheckRedirect = disableRedirect
 	}
 	return s
+}
+
+func (s *Session) GetAllowRedirects() bool {
+	return s.args.allowRedirects
 }
 
 func (s *Session) Save(path string, _url string) error {
