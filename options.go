@@ -27,6 +27,7 @@ type (
 		Auth    DataMap
 		Proxy   string
 		JSON    DataMap
+		Binary  []byte
 		Files   DataMap
 
 		AllowRedirects     bool
@@ -151,6 +152,16 @@ func setData(req *http.Request, d DataMap, chunked bool) error {
 	return nil
 }
 
+func setBinary(req *http.Request, d []byte, chunked bool) error {
+	body := bytes.NewReader(d)
+	req.Body = ioutil.NopCloser(body)
+	if !chunked {
+		req.ContentLength = int64(v.Len())
+	}
+
+	return nil
+}
+
 func setFiles(req *http.Request, files DataMap, chunked bool) error {
 	buffer := &bytes.Buffer{}
 	writer := multipart.NewWriter(buffer)
@@ -257,6 +268,13 @@ func (h *RequestArgs) setRequestOpt(req *http.Request) error {
 
 	if h.Data != nil {
 		err := setData(req, h.Data, h.Chunked)
+		if err != nil {
+			return err
+		}
+	}
+
+	if h.Binary != nil {
+		err := setBinary(req, h.Binary, h.Chunked)
 		if err != nil {
 			return err
 		}

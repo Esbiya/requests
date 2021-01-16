@@ -272,13 +272,22 @@ const curl2GoRequests = curlCommand => {
         if (typeof request.data === 'number') {
             request.data = request.data.toString();
         }
-        if (request.data.indexOf("&") > -1) {
-            request.data = str2json(request.data);
-            args += "\t\tData:    data,\n";
-        } else {
+        var data;
+
+        try {
+            data = JSON.parse(request.data);
             args += "\t\tJSON:    data,\n";
+            code += `\tdata := requests.DataMap${jsonIndent(data, '\t\t')}\n`;
+        } catch (e) {
+            if (request.data.indexOf("&") > -1) {
+                data = JSON.parse(str2json(request.data));
+                args += "\t\tData:    data,\n";
+                code += `\tdata := requests.DataMap${jsonIndent(data, '\t\t')}\n`;
+            } else {
+                args += "\t\tBinary:  data,\n";
+                code += `\tdata := []byte("${request.data}")\n`
+            }
         }
-        code += `\tdata := requests.DataMap${jsonIndent(JSON.parse(request.data), '\t\t')}\n`;
     }
     if (!request.compressed) {
         args += "\t\tDisableCompression: true,\n";
