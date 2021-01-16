@@ -107,6 +107,15 @@ if resp.StatusCode != http.StatusOK {
 log.Println(resp.Text)
 ```
 
+### post binary
+
+```
+data := []byte("Cy050N6ilGz9wMLJ/zpsaCErDXZzKv/F7LxG4EWq3yTlP767PQZZxGNgiVDyZXQ69bi9V5rmYfG8R6AFV6hzDwzH9zwhdCncVTQroW1NGOgAtonwOmPHJiuJUkSllwV9zoNrWxxJcoWaJ/oOfQlT+ElS7DS8M94HXH79S1wK0nwEDTNZpRASFf9h5zEVkBOuyFiwJLqCgNgNmWZpQ7w4zWNxOY4nSu67NOhG3avZOvZFqJ+3bkrD2H01iMIn1/jE1kawsfPeoA5s8SoakIRvUO5Vmjy3QI44Rv222uulgdziBSWXjjyD60sF3Rh0DChRKv5i62Ny1LzWjRX0dRSqPrdjDtchDDVr6yeAKSO74whHf7mr0unTFgD/nNLQv2mrr+NOzhgHe1WnE0LQelldg2OtRQl1zLFH+03EUWY28UUYEAuO/ZDbLvUd44gMjtpV9lvIY/O+ePn+D4Zk1KNCzkyzO1BCEkRxOBdd+d4j78EngIMqK5JOzpXjJ/BlLyUJVeEd6uL62kBHP3ILLgF0r49OnASz65pzTrWFW4wcE3MRx23KSrAbx81bAm0S7Jq3phLAly1UnBKnXmpu1tSbWIrI+yjuO0HF+RvN+KK0GsBqzCGesStl9OhMlg0XI1triVj48oicZ4EveJnoEf1wRjukyOH3g+WJWQE1C4B3P54VTZxlEkHhtv+20QgpXZQ803zEmcd2m680ylxJ1TeMypSftb8jeX44lvh0XUBwDAn+C5SF80xg6FsSbjho4BuBvO2dT6hIM9moP4fVSJB6Hpu/XkiqYuE70R7H/k8b+8faem+lP7Mkx/0DwAFoLRGJlpUs5AvRkSWpww1eewO0nhBmE7eVBCXDyaDmOE6QtUTk3KTCXbL7Rl+we6bQqqvP+V1c20K4QTzoiRTBHGX69KbVmFNxcayKvyQnbhSJxvQtX6uih7WE76VrmScPO7Hk")
+resp := requests.Post(url, requests.RequestArgs{
+	Binary:  data,
+})
+```
+
 ### 请求头设置
 
 ```go
