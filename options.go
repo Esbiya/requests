@@ -156,7 +156,7 @@ func setBinary(req *http.Request, d []byte, chunked bool) error {
 	body := bytes.NewReader(d)
 	req.Body = ioutil.NopCloser(body)
 	if !chunked {
-		req.ContentLength = int64(v.Len())
+		req.ContentLength = int64(len(d))
 	}
 
 	return nil
