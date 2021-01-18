@@ -64,8 +64,8 @@ func genCipher(data string) string {
 func TestRequest(t *testing.T) {
 	url := "http://wenshuapp.court.gov.cn/appinterface/rest.q4w"
 
-	session := NewSession().SetProxy("http://127.0.0.1:8888").SetSkipVerifyTLS(true)
-	headers := DataMap{
+	session := NewSession()
+	headers := Headers{
 		"Content-Type": "application/x-www-form-urlencoded",
 		"User-Agent":   "Dalvik/2.1.0 (Linux; U; Android 8.0.0; Google Nexus 5X Build/OPR6.170623.017)",
 		"Host":         "wenshuapp.court.gov.cn",
@@ -77,15 +77,15 @@ func TestRequest(t *testing.T) {
 	iv := fmt.Sprintf("%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"))
 	timestamp := strconv.FormatInt(now.UnixNano()/1e6, 10)
 
-	_ = session.RegisterBeforeRequestArgsHook(func(args *RequestArgs) error {
+	_ = session.RegisterBeforeReqHook(func(req *Request) error {
 		encryptStr, err := openssl.Des3CBCEncrypt([]byte(timestamp), []byte(key), []byte(iv), openssl.PKCS7_PADDING)
 		if err != nil {
 			return err
 		}
-		args.Data["params"].(map[string]interface{})["ciphertext"] = genCipher(key + iv + base64.StdEncoding.EncodeToString(encryptStr))
+		req.Form["params"].(map[string]interface{})["ciphertext"] = genCipher(key + iv + base64.StdEncoding.EncodeToString(encryptStr))
 
-		d, err := json.Marshal(args.Data)
-		args.Data = DataMap{
+		d, err := json.Marshal(req.Form)
+		req.Form = Form{
 			"request": base64.StdEncoding.EncodeToString(d),
 		}
 		return err
@@ -107,7 +107,7 @@ func TestRequest(t *testing.T) {
 		return err
 	})
 
-	data := DataMap{
+	data := Form{
 		"id":      fmt.Sprintf("%s%s%s%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"), now.Format("15"), now.Format("04"), now.Format("05")),
 		"command": "queryDoc",
 		"params": map[string]interface{}{
@@ -119,10 +119,7 @@ func TestRequest(t *testing.T) {
 			},
 		},
 	}
-	resp := session.Post(url, RequestArgs{
-		Headers: headers,
-		Data:    data,
-	})
+	resp := session.Post(url, headers, data, SessionArgs{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true})
 	if resp.Err != nil {
 		panic(resp.Err)
 	}

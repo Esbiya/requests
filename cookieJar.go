@@ -17,6 +17,8 @@ import (
 
 type BaseCookies []*http.Cookie
 
+type SimpleCookie map[string]string
+
 func (s BaseCookies) Bytes() ([]byte, error) {
 	return json.Marshal(s)
 }
@@ -126,7 +128,7 @@ func hasDotSuffix(s, suffix string) bool {
 func (j *CookieJar) Bytes(_url string) ([]byte, error) {
 	Url, err := url.Parse(_url)
 	if err != nil {
-		return nil, errors.Wrap(err, "query cookies error")
+		return nil, errors.Wrap(err, "query Cookies error")
 	}
 	cookies := j.Cookies(Url)
 	return json.MarshalIndent(cookies, "", "  ")
@@ -146,7 +148,7 @@ func (j *CookieJar) Map(_url string) (map[string]interface{}, error) {
 	cookies := map[string]interface{}{}
 	Url, err := url.Parse(_url)
 	if err != nil {
-		return nil, errors.Wrap(err, "query cookies error")
+		return nil, errors.Wrap(err, "query Cookies error")
 	}
 	for _, cookie := range j.Cookies(Url) {
 		cookies[(*cookie).Name] = (*cookie).Value
@@ -158,7 +160,7 @@ func (j *CookieJar) String(_url string) (string, error) {
 	r := ""
 	Url, err := url.Parse(_url)
 	if err != nil {
-		return "", errors.Wrap(err, "query cookies error")
+		return "", errors.Wrap(err, "query Cookies error")
 	}
 	for _, cookie := range j.Cookies(Url) {
 		r += (*cookie).Name + "=" + (*cookie).Value + "; "
@@ -184,14 +186,14 @@ func (j *CookieJar) Load(path string, _url string) error {
 	}
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return errors.Wrap(err, "read cookies fail")
+		return errors.Wrap(err, "read Cookies fail")
 	}
 	var cookies []*http.Cookie
 	err = json.Unmarshal(data, &cookies)
 
 	Url, err := url.Parse(_url)
 	if err != nil {
-		return errors.Wrap(err, "load cookies error")
+		return errors.Wrap(err, "load Cookies error")
 	}
 	j.SetCookies(Url, cookies)
 	return nil

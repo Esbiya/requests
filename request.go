@@ -1,7 +1,19 @@
 package requests
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"mime/multipart"
+	"net/http"
+	"net/textproto"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 var (
@@ -9,7 +21,7 @@ var (
 
 	ErrFileInfo = errors.New("requests: invalid file information")
 
-	ErrParamConflict = errors.New("requests: requestArgs param conflict")
+	ErrParamConflict = errors.New("requests: post conflict")
 
 	ErrUnrecognizedEncoding = errors.New("requests: unrecognized encoding")
 
@@ -30,72 +42,299 @@ const (
 	PATCH   = "PATCH"
 )
 
-func Get(url string, args RequestArgs) *Response {
+type Params map[string]string
+
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+func escapeQuotes(s string) string {
+	return quoteEscaper.Replace(s)
+}
+
+type Request struct {
+	*http.Request
+	Headers Headers
+	Cookies SimpleCookie
+	Auth    Auth
+	Params  Params
+	Form    Form
+	Payload Payload
+	Binary  []byte
+	Files   Files
+	Chunked bool
+}
+
+func (r *Request) isConflict() bool {
+	count := 0
+	if r.Form != nil {
+		count++
+	}
+	if r.Payload != nil {
+		count++
+	}
+	if r.Files != nil {
+		count++
+	}
+	if r.Binary != nil {
+		count++
+	}
+	return count > 1
+}
+
+func (r *Request) setQuery() error {
+	originURL := r.Request.URL
+	extendQuery := make([]byte, 0)
+
+	for k, v := range r.Params {
+		kEscaped := url.QueryEscape(k)
+		vEscaped := url.QueryEscape(v)
+
+		extendQuery = append(extendQuery, '&')
+		extendQuery = append(extendQuery, []byte(kEscaped)...)
+		extendQuery = append(extendQuery, '=')
+		extendQuery = append(extendQuery, []byte(vEscaped)...)
+	}
+
+	if originURL.RawQuery == "" {
+		extendQuery = extendQuery[1:]
+	}
+
+	originURL.RawQuery += string(extendQuery)
+	return nil
+}
+
+func (r *Request) setForm() error {
+	data := ""
+	for k, v := range r.Form {
+		k = url.QueryEscape(k)
+
+		vs, ok := v.(string)
+		if !ok {
+			return fmt.Errorf(
+				"post data %v[%T] must be string type", v, v)
+		}
+		vs = url.QueryEscape(vs)
+		data = fmt.Sprintf("%s&%s=%s", data, k, vs)
+	}
+
+	data = data[1:]
+	v := strings.NewReader(data)
+	r.Request.Body = ioutil.NopCloser(v)
+	r.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if !r.Chunked {
+		r.Request.ContentLength = int64(v.Len())
+	}
+	return nil
+}
+
+func (r *Request) setPayload() error {
+	jsonV, err := json.Marshal(r.Payload)
+	if err != nil {
+		return err
+	}
+	v := bytes.NewBuffer(jsonV)
+	r.Request.Body = ioutil.NopCloser(v)
+	r.Request.Header.Set("Content-Type", "application/json")
+	if !r.Chunked {
+		r.Request.ContentLength = int64(v.Len())
+	}
+	return nil
+}
+
+func (r *Request) setBinary() error {
+	body := bytes.NewReader(r.Binary)
+	r.Request.Body = ioutil.NopCloser(body)
+	if !r.Chunked {
+		r.Request.ContentLength = int64(len(r.Binary))
+	}
+
+	return nil
+}
+
+func (r *Request) setFiles() error {
+	buffer := &bytes.Buffer{}
+	writer := multipart.NewWriter(buffer)
+
+	var fp *os.File
+	defer func() {
+		if fp != nil {
+			fp.Close()
+		}
+	}()
+
+	for name, value := range r.Files {
+		switch value := value.(type) {
+		case *FileOption:
+			mimeType := value.MimeType
+			if mimeType == "" {
+				mimeType = "application/octet-stream"
+			}
+
+			h := make(textproto.MIMEHeader)
+			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, escapeQuotes(name), escapeQuotes(value.FileName)))
+			h.Set("Content-Type", mimeType)
+
+			var fileWriter io.Writer
+			var err error
+			fileParam := value.FileParam
+			if fileParam != "" {
+				fileWriter, err = writer.CreateFormFile(fileParam, filepath.Base(value.FilePath))
+			} else {
+				fileWriter, err = writer.CreatePart(h)
+			}
+			if err != nil {
+				return err
+			}
+
+			if len(value.Src) != 0 {
+				_, err = fileWriter.Write(value.Src)
+				if err != nil {
+					return err
+				}
+			} else {
+				fp, err = os.Open(value.FilePath)
+				if err != nil {
+					return err
+				}
+
+				_, err = io.Copy(fileWriter, fp)
+				if err != nil {
+					return err
+				}
+			}
+
+		case string:
+			err := writer.WriteField(name, value)
+			if err != nil {
+				return err
+			}
+
+		default:
+			return ErrFileInfo
+		}
+	}
+
+	err := writer.Close()
+	if err != nil {
+		return err
+	}
+
+	r.Request.Body = ioutil.NopCloser(buffer)
+	contentType := writer.FormDataContentType()
+	r.Request.Header.Set("Content-Type", contentType)
+	if !r.Chunked {
+		r.Request.ContentLength = int64(buffer.Len())
+	}
+	return nil
+}
+
+func (r *Request) setAuth() error {
+	for k, v := range r.Auth {
+		vs, ok := v.(string)
+		if !ok {
+			return fmt.Errorf("basic-auth %v[%T] must be string type", v, v)
+		}
+		r.Request.SetBasicAuth(k, vs)
+	}
+	return nil
+}
+
+func (r *Request) setRequestOpt() error {
+	if r.isConflict() {
+		return ErrParamConflict
+	}
+
+	if r.Params != nil {
+		err := r.setQuery()
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.Form != nil {
+		err := r.setForm()
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.Payload != nil {
+		err := r.setPayload()
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.Binary != nil {
+		err := r.setBinary()
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.Files != nil {
+		err := r.setFiles()
+		if err != nil {
+			return err
+		}
+	}
+
+	if r.Headers != nil {
+		for key, value := range r.Headers {
+			r.Request.Header[key] = []string{value}
+		}
+	}
+
+	if r.Cookies != nil {
+		for cookieK, cookieV := range r.Cookies {
+			c := &http.Cookie{
+				Name:  cookieK,
+				Value: cookieV,
+			}
+			r.Request.AddCookie(c)
+		}
+	}
+
+	if r.Auth != nil {
+		err := r.setAuth()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func Get(url string, args ...interface{}) *Response {
 	session := NewSession()
 	return session.Get(url, args)
 }
 
-func AsyncGet(url string, args RequestArgs, ch chan *Response) {
-	session := NewSession()
-	go session.AsyncGet(url, args, ch)
-}
-
-func Post(url string, args RequestArgs) *Response {
+func Post(url string, args ...interface{}) *Response {
 	session := NewSession()
 	return session.Post(url, args)
 }
 
-func AsyncPost(url string, args RequestArgs, ch chan *Response) {
-	session := NewSession()
-	go session.AsyncPost(url, args, ch)
-}
-
-func Head(url string, args RequestArgs) *Response {
+func Head(url string, args ...interface{}) *Response {
 	session := NewSession()
 	return session.Head(url, args)
 }
 
-func AsyncHead(url string, args RequestArgs, ch chan *Response) {
-	session := NewSession()
-	go session.AsyncHead(url, args, ch)
-}
-
-func Delete(url string, args RequestArgs) *Response {
+func Delete(url string, args ...interface{}) *Response {
 	session := NewSession()
 	return session.Delete(url, args)
 }
 
-func AsyncDelete(url string, args RequestArgs, ch chan *Response) {
-	session := NewSession()
-	go session.AsyncDelete(url, args, ch)
-}
-
-func Options(url string, args RequestArgs) *Response {
+func Options(url string, args ...interface{}) *Response {
 	session := NewSession()
 	return session.Options(url, args)
 }
 
-func AsyncOption(url string, args RequestArgs, ch chan *Response) {
-	session := NewSession()
-	go session.AsyncOptions(url, args, ch)
-}
-
-func Put(url string, args RequestArgs) *Response {
+func Put(url string, args ...interface{}) *Response {
 	session := NewSession()
 	return session.Put(url, args)
 }
 
-func AsyncPut(url string, args RequestArgs, ch chan *Response) {
-	session := NewSession()
-	go session.AsyncPut(url, args, ch)
-}
-
-func Patch(url string, args RequestArgs) *Response {
+func Patch(url string, args ...interface{}) *Response {
 	session := NewSession()
 	return session.Patch(url, args)
-}
-
-func AsyncPatch(url string, args RequestArgs, ch chan *Response) {
-	session := NewSession()
-	go session.AsyncPatch(url, args, ch)
 }
