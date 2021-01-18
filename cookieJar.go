@@ -393,7 +393,7 @@ func defaultPath(path string) string {
 		return "/"
 	}
 	return path[:i]*/
-	// 修复了设置cookie时path作用域的问题，统一设置/
+	// 修复了设置 cookie 时 path 作用域的问题，统一设置/
 	return "/"
 }
 

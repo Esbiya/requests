@@ -21,7 +21,7 @@ type (
 	RequestArgs struct {
 		Params  DataMap
 		Data    DataMap
-		Raw     string
+		Payload string
 		Headers DataMap
 		Cookies DataMap
 		Auth    DataMap
@@ -89,7 +89,7 @@ func (h RequestArgs) isConflict() bool {
 	if h.Data != nil {
 		count++
 	}
-	if h.Raw != "" {
+	if h.Payload != "" {
 		count++
 	}
 	if h.Files != nil {
@@ -280,8 +280,8 @@ func (h *RequestArgs) setRequestOpt(req *http.Request) error {
 		}
 	}
 
-	if h.Raw != "" {
-		v := strings.NewReader(h.Raw)
+	if h.Payload != "" {
+		v := strings.NewReader(h.Payload)
 		req.Body = ioutil.NopCloser(v)
 		if !h.Chunked {
 			req.ContentLength = int64(v.Len())
@@ -295,9 +295,6 @@ func (h *RequestArgs) setRequestOpt(req *http.Request) error {
 				return fmt.Errorf("header %v[%T] must be string type", headerV, headerV)
 			}
 			req.Header[headerK] = []string{headerVS}
-			if headerK == "Connection" && headerV == "keep-alive" {
-				req.Close = false
-			}
 		}
 	}
 
