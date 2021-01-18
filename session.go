@@ -343,22 +343,22 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 			case http.Header:
 				for key, values := range _arg {
 					for _, value := range values {
-						s.request.Header.Add(key, value)
+						s.request.Request.Header.Add(key, value)
 					}
 				}
 			case string:
 				body := strings.NewReader(_arg)
-				s.request.Body = ioutil.NopCloser(body)
-				s.request.ContentLength = int64(len(_arg))
+				s.request.Request.Body = ioutil.NopCloser(body)
+				s.request.Request.ContentLength = int64(len(_arg))
 			case []byte:
 				body := bytes.NewReader(_arg)
-				s.request.Body = ioutil.NopCloser(body)
-				s.request.ContentLength = int64(len(_arg))
+				s.request.Request.Body = ioutil.NopCloser(body)
+				s.request.Request.ContentLength = int64(len(_arg))
 			case *http.Cookie:
 				s.request.AddCookie(_arg)
 			case []*http.Cookie:
 				for _, cookie := range _arg {
-					s.request.AddCookie(cookie)
+					s.request.Request.AddCookie(cookie)
 				}
 			case SessionArgs:
 				err := _arg.setClientOpt(s.Client)
