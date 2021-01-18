@@ -173,7 +173,6 @@ func NewSession(opts ...ModifySessionOption) *Session {
 		Url:       Url,
 		option:    opts,
 		CookieJar: NewCookieJar(),
-		request:   &Request{},
 		args:      v,
 	}
 	client.Jar = session.CookieJar
@@ -314,6 +313,7 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 				Err: err,
 			}
 		}
+		s.request = &Request{}
 		s.request.Request = req
 		s.request.Header.Set("User-Agent", RandomUserAgent(nil))
 
@@ -340,22 +340,26 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 				s.request.Payload = _arg
 			case Files:
 				s.request.Files = _arg
+			case string:
+				body := strings.NewReader(_arg)
+				s.request.Request.Body = ioutil.NopCloser(body)
+				if !s.request.Chunked {
+					s.request.Request.ContentLength = int64(len(_arg))
+				}
+			case []byte:
+				body := bytes.NewReader(_arg)
+				s.request.Request.Body = ioutil.NopCloser(body)
+				if !s.request.Chunked {
+					s.request.Request.ContentLength = int64(len(_arg))
+				}
 			case http.Header:
 				for key, values := range _arg {
 					for _, value := range values {
 						s.request.Request.Header.Add(key, value)
 					}
 				}
-			case string:
-				body := strings.NewReader(_arg)
-				s.request.Request.Body = ioutil.NopCloser(body)
-				s.request.Request.ContentLength = int64(len(_arg))
-			case []byte:
-				body := bytes.NewReader(_arg)
-				s.request.Request.Body = ioutil.NopCloser(body)
-				s.request.Request.ContentLength = int64(len(_arg))
 			case *http.Cookie:
-				s.request.AddCookie(_arg)
+				s.request.Request.AddCookie(_arg)
 			case []*http.Cookie:
 				for _, cookie := range _arg {
 					s.request.Request.AddCookie(cookie)
