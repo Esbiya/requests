@@ -3,6 +3,7 @@ package requests
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"github.com/axgle/mahonia"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -11,26 +12,29 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Response struct {
 	*http.Response
 	encoding string
+	cost     time.Duration
 	Text     string
 	Bytes    []byte
-	Err      error
+	err      error
 }
 
-func NewResponse(r *http.Response) *Response {
+func NewResponse(r *http.Response, cost time.Duration) *Response {
 	resp := &Response{
 		Response: r,
 		encoding: "utf-8",
+		cost:     cost,
 		Text:     "",
 		Bytes:    []byte{},
 	}
 
 	err := resp.bytes()
-	resp.Err = err
+	resp.err = err
 	resp.text()
 	return resp
 }
@@ -48,9 +52,21 @@ func (r *Response) bytes() error {
 	return err
 }
 
+func (r *Response) Error() error {
+	return r.err
+}
+
+func (r *Response) Cost() time.Duration {
+	return r.cost
+}
+
+func (r *Response) XML(v interface{}) error {
+	return xml.Unmarshal(r.Bytes, v)
+}
+
 func (r *Response) JSON() (map[string]interface{}, error) {
-	if r.Err != nil {
-		return nil, r.Err
+	if r.err != nil {
+		return nil, r.err
 	}
 	if r.StatusCode != http.StatusOK {
 		return nil, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
@@ -66,8 +82,8 @@ func (r *Response) JSON() (map[string]interface{}, error) {
 }
 
 func (r *Response) CallbackJSON() (map[string]interface{}, error) {
-	if r.Err != nil {
-		return nil, r.Err
+	if r.err != nil {
+		return nil, r.err
 	}
 	if r.StatusCode != http.StatusOK {
 		return nil, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))

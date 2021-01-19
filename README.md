@@ -21,7 +21,7 @@ import (
 
 func main() {
 	url := "https://www.baidu.com/"
-  	resp := requests.Get(url, requests.RequestArgs{})
+  	resp := requests.Get(url)
 	  if resp.StatusCode != http.StatusOK {
 		    log.Fatal("状态码异常")
    	}
@@ -32,108 +32,166 @@ func main() {
 ### get 请求
 
 ```go
-url := "https://www.baidu.com/"
-params := requests.DataMap{
-	"hello": "there",
-}
-headers := requests.DataMap{
-	"User-Agent": "xxx",
-}
-resp := requests.Get(url, requests.RequestArgs{
-	Headers: headers,
-	Params: Params,
-})
-if resp.StatusCode != http.StatusOK {
-	log.Fatal("状态码异常")
+params := requests.Params{"1": "2"}
+resp := requests.Get("https://www.baidu.com", params, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true})
+if resp.Error() != nil {
+	log.Fatal(resp.Error())
 }
 log.Println(resp.Text)
+log.Println(resp.Cost().String())
 ```
 
 ### 异步 get 请求
 
-```
-c := make(*Response, 1)
-c := make(chan *Response, 1)
-requests.AsyncGet(url, RequestArgs{}, c)
-log.Println((<-c).JSON())
+```go
+start := time.Now()
+for i := 0; i < 10; i++ {
+	headers := requests.Headers{
+		"Connection": "keep-alive",
+	}
+	requests.AsyncGet("https://www.baidu.com", headers).Then(func(r *requests.Response) {
+	    if r.Error() != nil {
+	    	log.Fatal(r.Error())
+		}
+		log.Println("function cost => " + r.Cost().String())
+	})
+}
+log.Println("execute first")
+requests.AsyncWait() // 必须等待, 否则异步请求不会执行
+end := time.Now()
+log.Println("all cost => " + end.Sub(start).String())
 ```
 
 ### post form 请求
 
 ```go
-url := "https://www.baidu.com/"
-data := requests.DataMap{
-	"hello": "there",
+url := "https://accounts.douban.com/j/mobile/login/basic"
+headers := requests.Headers{
+	"Connection":       "keep-alive",
+	"Pragma":           "no-cache",
+	"Cache-Control":    "no-cache",
+	"Accept":           "application/json",
+	"X-Requested-With": "XMLHttpRequest",
+	"User-Agent":       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36",
+	"Content-Type":     "application/x-www-form-urlencoded",
+	"Origin":           "https://accounts.douban.com",
+	"Referer":          "https://accounts.douban.com/passport/login_popup?login_source=anony",
+	"Accept-Language":  "zh-CN,zh;q=0.9",
 }
-headers := requests.DataMap{
-	"User-Agent": "xxx",
+cookies := requests.SimpleCookie{
+	"bid":               "lj_mS940akg",
+	"douban-fav-remind": "1",
+	"ll":                "118281",
+	"_vwo_uuid_v2":      "D80341DC04F297D12F96A751576B82F67|271ec79a2a95920f60676d36ea786643",
+	"__gads":            "ID=0930c55e6f0d2ebe-22d4125465c400e7:T=1603714878:RT=1603714878:S=ALNI_Ma45i6lqTVh5ATe4v0iNBhhBVkUJQ",
+	"__utmc":            "30149280",
+	"apiKey":            "",
+	"__utma":            "30149280.1034523831.1589204237.1609676365.1611036335.28",
+	"__utmz":            "30149280.1611036335.28.27.utmcsr=baidu|utmccn=(organic)|utmcmd=organic",
+	"__utmt":            "1",
+	"__utmb":            "30149280.1.10.1611036335",
+	"login_start_time":  "1611036340462",
 }
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	Data: data,
-})
-if resp.StatusCode != http.StatusOK {
-	log.Fatal("状态码异常")
+data := requests.Form{
+	"ck":       "",
+	"remember": "true",
+	"name":     "18829040039",
+	"password": "wefewfw",
+}
+resp := requests.Post(url, headers, data, cookies, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true})
+if resp.Error() != nil {
+	log.Fatal(resp.Error())
 }
 log.Println(resp.Text)
 ```
 
 ### 异步 post 请求
 
-```
-c := make(*Response, 1)
-c := make(chan *Response, 1)
-requests.AsyncPost(url, RequestArgs{}, c)
-log.Println((<-c).JSON())
+```go
+url := "https://accounts.douban.com/j/mobile/login/basic"
+headers := requests.Headers{
+	"Connection":       "keep-alive",
+	"Pragma":           "no-cache",
+	"Cache-Control":    "no-cache",
+	"Accept":           "application/json",
+	"X-Requested-With": "XMLHttpRequest",
+	"User-Agent":       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36",
+	"Content-Type":     "application/x-www-form-urlencoded",
+	"Origin":           "https://accounts.douban.com",
+	"Referer":          "https://accounts.douban.com/passport/login_popup?login_source=anony",
+	"Accept-Language":  "zh-CN,zh;q=0.9",
+}
+cookies := requests.SimpleCookie{
+	"bid":               "lj_mS940akg",
+	"douban-fav-remind": "1",
+	"ll":                "118281",
+	"_vwo_uuid_v2":      "D80341DC04F297D12F96A751576B82F67|271ec79a2a95920f60676d36ea786643",
+	"__gads":            "ID=0930c55e6f0d2ebe-22d4125465c400e7:T=1603714878:RT=1603714878:S=ALNI_Ma45i6lqTVh5ATe4v0iNBhhBVkUJQ",
+	"__utmc":            "30149280",
+	"apiKey":            "",
+	"__utma":            "30149280.1034523831.1589204237.1609676365.1611036335.28",
+	"__utmz":            "30149280.1611036335.28.27.utmcsr=baidu|utmccn=(organic)|utmcmd=organic",
+	"__utmt":            "1",
+	"__utmb":            "30149280.1.10.1611036335",
+	"login_start_time":  "1611036340462",
+}
+data := requests.Form{
+	"ck":       "",
+	"remember": "true",
+	"name":     "18829040039",
+	"password": "wefewfw",
+}
+requests.AsyncPost(url, headers, data, cookies, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true}).Then(func(r *requests.Response) {
+	if r.Error() != nil {
+		log.Fatal(r.Error())
+	}
+	log.Println(r.Text)
+})
+requests.AsyncWait()
 ```
 
-### post json 请求
+### post payload 请求
 
 ```go
-url := "https://www.baidu.com/"
-data := requests.DataMap{
-	"hello": "there",
+url := "https://www.guilinbank.com.cn/api-portal/portal-home/article/manage/queryListByLibraryId"
+headers := requests.Headers{
+	"Connection":       "keep-alive",
+	"Accept":           "*/*",
+	"X-Requested-With": "XMLHttpRequest",
+	"User-Agent":       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
+	"Content-Type":     "application/json; charset=UTF-8",
+	"Origin":           "https://www.guilinbank.com.cn",
+	"Referer":          "https://www.guilinbank.com.cn/page-adapt/index/docList?libraryId=LIBRARY_productNotice&title=%E4%BA%A7%E5%93%81%E5%85%AC%E5%91%8A",
+	"Accept-Language":  "zh-CN,zh;q=0.9",
 }
-headers := requests.DataMap{
-	"User-Agent": "xxx",
+
+data := requests.Payload{
+	"pageSize":  15,
+	"pageNum":   1,
+	"title":     "",
+	"endTime":   nil,
+	"startTime": nil,
+	"libraryId": "LIBRARY_productNotice$guilin_bank_portal",
 }
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	JSON: data,
-})
-if resp.StatusCode != http.StatusOK {
-	log.Fatal("状态码异常")
+// 等同于 json 字符串, == json.dumps({"1": "2"}) (python)
+resp := requests.Post(url, headers, data, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true, DisableCompression: false})
+if resp.Error() != nil {
+	log.Fatal(resp.Error())
 }
 log.Println(resp.Text)
 ```
 
 ### post binary
 
-```
-data := []byte("Cy050N6ilGz9wMLJ/zpsaCErDXZzKv/F7LxG4EWq3yTlP767PQZZxGNgiVDyZXQ69bi9V5rmYfG8R6AFV6hzDwzH9zwhdCncVTQroW1NGOgAtonwOmPHJiuJUkSllwV9zoNrWxxJcoWaJ/oOfQlT+ElS7DS8M94HXH79S1wK0nwEDTNZpRASFf9h5zEVkBOuyFiwJLqCgNgNmWZpQ7w4zWNxOY4nSu67NOhG3avZOvZFqJ+3bkrD2H01iMIn1/jE1kawsfPeoA5s8SoakIRvUO5Vmjy3QI44Rv222uulgdziBSWXjjyD60sF3Rh0DChRKv5i62Ny1LzWjRX0dRSqPrdjDtchDDVr6yeAKSO74whHf7mr0unTFgD/nNLQv2mrr+NOzhgHe1WnE0LQelldg2OtRQl1zLFH+03EUWY28UUYEAuO/ZDbLvUd44gMjtpV9lvIY/O+ePn+D4Zk1KNCzkyzO1BCEkRxOBdd+d4j78EngIMqK5JOzpXjJ/BlLyUJVeEd6uL62kBHP3ILLgF0r49OnASz65pzTrWFW4wcE3MRx23KSrAbx81bAm0S7Jq3phLAly1UnBKnXmpu1tSbWIrI+yjuO0HF+RvN+KK0GsBqzCGesStl9OhMlg0XI1triVj48oicZ4EveJnoEf1wRjukyOH3g+WJWQE1C4B3P54VTZxlEkHhtv+20QgpXZQ803zEmcd2m680ylxJ1TeMypSftb8jeX44lvh0XUBwDAn+C5SF80xg6FsSbjho4BuBvO2dT6hIM9moP4fVSJB6Hpu/XkiqYuE70R7H/k8b+8faem+lP7Mkx/0DwAFoLRGJlpUs5AvRkSWpww1eewO0nhBmE7eVBCXDyaDmOE6QtUTk3KTCXbL7Rl+we6bQqqvP+V1c20K4QTzoiRTBHGX69KbVmFNxcayKvyQnbhSJxvQtX6uih7WE76VrmScPO7Hk")
-resp := requests.Post(url, requests.RequestArgs{
-	Binary:  data,
-})
-```
-
-### 请求头设置
-
 ```go
-url := "https://www.baidu.com/"
-data := requests.DataMap{
-	"hello": "there",
+api := "http://192.168.100.107:7788"
+data, err := ioutil.ReadFile("captcha.png")
+if err != nil {		
+    log.Fatal(err)
 }
-headers := requests.DataMap{
-	"User-Agent": "xxx", 
-    "Connection": "keep-alive",
-    "Cookie": "111=222; 333=444",
-}
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	JSON: data,
-})
-if resp.StatusCode != http.StatusOK {
-	log.Fatal("状态码异常")
+resp := requests.Post(api, data)
+if resp.Error() != nil {
+	log.Fatal(resp.Error())
 }
 log.Println(resp.Text)
 ```
@@ -142,22 +200,18 @@ log.Println(resp.Text)
 
 ```go
 url := "https://www.baidu.com/"
-data := requests.DataMap{
+data := requests.Data{
 	"hello": "there",
 }
-headers := requests.DataMap{
+headers := requests.Headers{
 	"User-Agent": "xxx",
 	"Cookie": "111=222; 333=444",  // 设置方式 1
 }
-Cookies := requests.DataMap{
+Cookies := requests.SimpleCookies{
 	"111": "222", 
     "333": "444",
 }
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	Data: data,
-	Cookies: cookies,
-})
+resp := requests.Post(url, headers, data, cookie)
 if resp.StatusCode != http.StatusOK {
 	log.Fatal("状态码异常")
 }
@@ -170,17 +224,7 @@ log.Println(resp.Text)
 
 ```go
 url := "https://www.baidu.com/"
-data := requests.DataMap{
-	"hello": "there",
-}
-headers := requests.DataMap{
-	"User-Agent": "xxx",
-}
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	Data: data,
-	Proxy: "http://127.0.0.1:8888",
-})
+resp := requests.Post(url, requests.Arguments{Proxy: "http://127.0.0.1:8888"})
 if resp.StatusCode != http.StatusOK {
 	log.Fatal("状态码异常")
 }
@@ -191,17 +235,7 @@ log.Println(resp.Text)
 
 ```go
 url := "https://www.baidu.com/"
-data := requests.DataMap{
-	"hello": "there",
-}
-headers := requests.DataMap{
-	"User-Agent": "xxx",
-}
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	Data: data,
-	AllowRedirects: false,
-})
+resp := requests.Post(url, requests.Arguments{AllowRedirects: false})
 if resp.StatusCode != http.StatusOK {
 	log.Fatal("状态码异常")
 }
@@ -212,17 +246,7 @@ log.Println(resp.Text)
 
 ```go
 url := "https://www.baidu.com/"
-data := requests.DataMap{
-	"hello": "there",
-}
-headers := requests.DataMap{
-	"User-Agent": "xxx",
-}
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	Data: data,
-	DisableCompression: true,
-})
+resp := requests.Post(url, requests.Arguments{DisableCompression: true})
 if resp.StatusCode != http.StatusOK {
 	log.Fatal("状态码异常")
 }
@@ -233,17 +257,7 @@ log.Println(resp.Text)
 
 ```go
 url := "https://www.baidu.com/"
-data := requests.DataMap{
-	"hello": "there",
-}
-headers := requests.DataMap{
-	"User-Agent": "xxx",
-}
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	Data: data,
-    DisableKeepAlive: true,
-})
+resp := requests.Post(url, requests.Arguments{DisableKeepAlive: true})
 if resp.StatusCode != http.StatusOK {
 	log.Fatal("状态码异常")
 }
@@ -253,25 +267,40 @@ log.Println(resp.Text)
 ### 上传文件
 
 ```go
-url := "https://www.baidu.com/"
-headers := requests.DataMap{
-	"User-Agent": "xxx",
+session := requests.NewSession().SetProxy("http://127.0.0.1:8888").SetSkipVerifyTLS(true)
+_ = session.Load("test.json", "https://chat.zalo.me/")
+headers := requests.Headers{	
+	"Accept":          "application/json, text/plain, */*",
+	"Referer":         "https://chat.zalo.me/",
+	"Accept-Language": "zh-CN,zh;q=0.9",
 }
-filaName := "xxx.jpg"
-b, _ := ioutil.ReadFile(fileName)
-file := requests.File(fileName, b)
-fileData := requests.DataMap{
-	"file": file,
-	"Content-Type": "image/jpeg"
+params := requests.Params{
+	"zpw_ver":  "72",
+	"zpw_type": "30",
+	"params":   "CqJxEQSsxVJy3Rulu7wzpun/vVJeuzbZacam2v9JbiI=",
 }
-resp := requests.Post(url, requests.RequestArgs{
-	Headers: headers,
-	File: fileData,
-})
-if resp.StatusCode != http.StatusOK {
-	log.Fatal("状态码异常")
+// 方式 1
+file := requests.FileFromPath("/Users/esbiya/Desktop/pythonProjects/gitlab/whatsapp/test-0.png")
+file.Param = "fileContent"
+// 方式 2
+b, _ := ioutil.ReadFile("/Users/esbiya/Desktop/pythonProjects/gitlab/whatsapp/test-0.png")
+file1 := requests.FileFromBytes("test.png", b)
+file1.Param = "fileContent"
+// 方式 3, 细粒度配置
+file2 := &requests.File{
+	Name: "test.png",     													  // 文件名
+	Param: "fileContent",  												      // 文件参数名
+	Path: "/Users/esbiya/Desktop/pythonProjects/gitlab/whatsapp/test-0.png",  // 文件路径
+	Src: []byte{},               										      // 文件内容
+	Args: map[string]string{},   											  // 其他参数
+}
+// 支持多表单上传
+resp := session.Post("https://files-wpa.chat.zalo.me/api/message/upthumb", headers, params, file, file1, file2)
+if resp.Error() != nil {
+	log.Fatal(resp.Error())
 }
 log.Println(resp.Text)
+log.Println(resp.Cost().String())
 ```
 
 ### session
@@ -314,31 +343,81 @@ session := requests.NewSession().
 ### session get 请求
 
 ```go
-resp := session.Get("http://www.baidu.com/", requests.RequestsArgs{})
+resp := session.Get("http://www.baidu.com/")
 ```
 
 ### 异步 session get 请求
 
-```
-c := make(*Response, 1)
-c := make(chan *Response, 1)
-session.AsyncGet(url, RequestArgs{}, c)
-log.Println((<-c).JSON())
+```go
+start := time.Now()
+session := requests.NewSession()
+for i := 0; i < 10; i++ {
+	c := make(chan *requests.Response, 1)
+	headers := requests.Headers{
+		"Connection": "keep-alive",
+	}
+	session.AsyncGet("https://www.baidu.com", c, headers).Then(func(r *requests.Response) {
+		if r.Error() != nil {
+			log.Fatal(r.Error())
+		}
+		log.Println("function cost => " + r.Cost().String())
+	})
+}
+log.Println("execute first")
+requests.AsyncWait() // 必须等待, 否则异步请求不会执行
+end := time.Now()
+log.Println("all cost => " + end.Sub(start).String())
 ```
 
 ### session post 请求
 
 ```go
-resp := session.Post("http://www.baidu.com/", requests.RequestArgs{})
+resp := session.Post("http://www.baidu.com/")
 ```
 
 ### 异步 session post 请求
 
-```
-c := make(*Response, 1)
-c := make(chan *Response, 1)
-session.AsyncPost(url, RequestArgs{}, c)
-log.Println((<-c).JSON())
+```go
+url := "https://accounts.douban.com/j/mobile/login/basic"
+headers := requests.Headers{
+	"Connection":       "keep-alive",
+	"Pragma":           "no-cache",
+	"Cache-Control":    "no-cache",
+	"Accept":           "application/json",
+	"X-Requested-With": "XMLHttpRequest",
+	"User-Agent":       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36",
+	"Content-Type":     "application/x-www-form-urlencoded",
+	"Origin":           "https://accounts.douban.com",
+	"Referer":          "https://accounts.douban.com/passport/login_popup?login_source=anony",
+	"Accept-Language":  "zh-CN,zh;q=0.9",
+}
+cookies := requests.SimpleCookie{
+	"bid":               "lj_mS940akg",
+	"douban-fav-remind": "1",
+	"ll":                "118281",
+	"_vwo_uuid_v2":      "D80341DC04F297D12F96A751576B82F67|271ec79a2a95920f60676d36ea786643",
+	"__gads":            "ID=0930c55e6f0d2ebe-22d4125465c400e7:T=1603714878:RT=1603714878:S=ALNI_Ma45i6lqTVh5ATe4v0iNBhhBVkUJQ",
+	"__utmc":            "30149280",
+	"apiKey":            "",
+	"__utma":            "30149280.1034523831.1589204237.1609676365.1611036335.28",
+	"__utmz":            "30149280.1611036335.28.27.utmcsr=baidu|utmccn=(organic)|utmcmd=organic",
+	"__utmt":            "1",
+	"__utmb":            "30149280.1.10.1611036335",
+	"login_start_time":  "1611036340462",
+}
+data := requests.Form{
+	"ck":       "",
+	"remember": "true",
+	"name":     "18829040039",
+	"password": "wefewfw",
+}
+requests.AsyncPost(url, headers, data, cookies, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true}).Then(func(r *requests.Response) {
+	if r.Error() != nil {
+		log.Fatal(r.Error())
+	}
+	log.Println(r.Text)
+})
+requests.AsyncWait()
 ```
 
 ### 获取 session cookies
@@ -358,7 +437,7 @@ session.CookieJar.Array("https://jd.com/")
 
 ### 获取 session 其他设置
 
-```
+```go
 url := session.GetUrl()
 proxy := session.GetProxy()
 timeout := session.GetTimeout()
@@ -370,7 +449,7 @@ disableCompression := session.GetDisableCompression()
 
 ### session 复制
 
-```
+```go
 session1 := session.Copy()
 ```
 
@@ -378,36 +457,38 @@ session1 := session.Copy()
 
 * 请求前对请求参数预处理, 如对请求参数进行排序加签操作
 
-```
-_ = session.RegisterBeforeRequestArgsHook(func(args *RequestArgs) error {
-	args.Proxy = "http://127.0.0.1:8888"
-	args.SkipVerifyTLS = false
-	// 对 params 进行排序拼接 base64 加签
-	signature := ""
-	EachMap(args.Params, func(key string, value interface{}) {
-		signature += key + "=" + value.(string)
-	})
-	args.Params["signature"] = base64.StdEncoding.EncodeToString([]byte(signature))
-	return nil
-})
-```
-
-* 请求前对请求对象进行预处理
-
-```
-_ = session.RegisterBeforeReqHook(func(request *http.Request) error {
-	request.Close = true
-	return nil
+```go
+_ = session.RegisterBeforeReqHook(func(req *requests.Request) error {
+	encryptStr, err := openssl.Des3CBCEncrypt([]byte(timestamp), []byte(key), []byte(iv), openssl.PKCS7_PADDING)
+	if err != nil {
+		return err
+	}
+	req.Form["params"].(map[string]interface{})["ciphertext"] = genCipher(key + iv + base64.StdEncoding.EncodeToString(encryptStr))
+	d, err := json.Marshal(req.Form)
+	req.Form = requests.Form{
+		"request": base64.StdEncoding.EncodeToString(d),
+	}
+	return err
 })
 ```
 
 * 请求完成对响应进行预处理, 如将加密响应解密成明文
 
-```
-_ = session.RegisterAfterRespHook(func(response *Response) error {
-	var err error
-	response.Bytes, err = base64.StdEncoding.DecodeString(response.Text)
-	response.Text = string(response.Bytes)
+```go
+_ = session.RegisterAfterRespHook(func(response *requests.Response) error {
+	result, err := response.JSON()
+	if err != nil {
+		return err
+	}
+	data := result["data"].(map[string]interface{})
+	if _, ok := data["secretKey"]; ok {
+		b, _ := base64.StdEncoding.DecodeString(data["content"].(string))
+		response.Bytes, err = openssl.Des3CBCDecrypt(b, []byte(data["secretKey"].(string)), []byte(iv), openssl.PKCS7_PADDING)
+		if err != nil {
+			return err
+		}
+		response.Text = string(response.Bytes)
+	}
 	return err
 })
 ```
@@ -415,7 +496,7 @@ _ = session.RegisterAfterRespHook(func(response *Response) error {
 ### 响应
 
 ```go
-resp := session.Post("http://www.baidu.com/", requests.RequestArgs{})
+resp := session.Post("http://www.baidu.com/")
 resp.StatusCode          // 状态码
 resp.Bytes               // 响应字节
 resp.Text                // 响应字符串
@@ -424,12 +505,13 @@ resp.CallbackJSON()      // 解析 jQuery({"1": "2"}) json 响应
 resp.SetEncode("gbk")    // 设置响应编码
 resp.GetEncode()         // 获取响应编码
 resp.SaveFile("xxx.jpg") // 文件写入
-resp.Err                 // 响应错误, 正常响应为 nil
+resp.Error()             // 响应错误, 正常响应为 nil
 resp.Header              // 响应头
 resp.Cookies()           // 响应 cookies, []*http.Cookie
 resp.Location()          // 跳转 url
 resp.ContentLength       // 响应内容大小
 resp.Close               // tcp 连接是否已关闭 bool
+reso.Cost()              // 请求耗时
 ```
 
 ### 代码自动生成

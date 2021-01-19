@@ -11,37 +11,36 @@ type (
 
 	Payload map[string]interface{}
 
-	FileOption struct {
-		Src       []byte
-		FileParam string
-		FilePath  string
-		FileName  string
-		MimeType  string
+	File struct {
+		Src      []byte
+		Param    string
+		Path     string
+		Name     string
+		MimeType string
+		Args     map[string]string
 	}
-
-	Files map[string]interface{}
 )
 
-func File(filename string, src []byte) *FileOption {
-	return &FileOption{
-		Src:      src,
-		FileName: filename,
+func FileFromBytes(filename string, src []byte) *File {
+	return &File{
+		Src:  src,
+		Name: filename,
 	}
 }
 
-func FileFromPath(path string) *FileOption {
-	return &FileOption{
-		FilePath: path,
-		FileName: filepath.Base(path),
+func FileFromPath(path string) *File {
+	return &File{
+		Path: path,
+		Name: filepath.Base(path),
 	}
 }
 
-func (f *FileOption) FName(filename string) *FileOption {
-	f.FileName = filename
+func (f *File) SetName(filename string) *File {
+	f.Name = filename
 	return f
 }
 
-func (f *FileOption) MIME(mimeType string) *FileOption {
+func (f *File) MIME(mimeType string) *File {
 	f.MimeType = mimeType
 	return f
 }

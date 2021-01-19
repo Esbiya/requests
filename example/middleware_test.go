@@ -1,9 +1,10 @@
-package requests
+package example
 
 import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/Esbiya/requests"
 	"github.com/forgoer/openssl"
 	"github.com/gofrs/uuid"
 	"log"
@@ -64,8 +65,8 @@ func genCipher(data string) string {
 func TestRequest(t *testing.T) {
 	url := "http://wenshuapp.court.gov.cn/appinterface/rest.q4w"
 
-	session := NewSession()
-	headers := Headers{
+	session := requests.NewSession()
+	headers := requests.Headers{
 		"Content-Type": "application/x-www-form-urlencoded",
 		"User-Agent":   "Dalvik/2.1.0 (Linux; U; Android 8.0.0; Google Nexus 5X Build/OPR6.170623.017)",
 		"Host":         "wenshuapp.court.gov.cn",
@@ -77,7 +78,7 @@ func TestRequest(t *testing.T) {
 	iv := fmt.Sprintf("%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"))
 	timestamp := strconv.FormatInt(now.UnixNano()/1e6, 10)
 
-	_ = session.RegisterBeforeReqHook(func(req *Request) error {
+	_ = session.RegisterBeforeReqHook(func(req *requests.Request) error {
 		encryptStr, err := openssl.Des3CBCEncrypt([]byte(timestamp), []byte(key), []byte(iv), openssl.PKCS7_PADDING)
 		if err != nil {
 			return err
@@ -85,12 +86,12 @@ func TestRequest(t *testing.T) {
 		req.Form["params"].(map[string]interface{})["ciphertext"] = genCipher(key + iv + base64.StdEncoding.EncodeToString(encryptStr))
 
 		d, err := json.Marshal(req.Form)
-		req.Form = Form{
+		req.Form = requests.Form{
 			"request": base64.StdEncoding.EncodeToString(d),
 		}
 		return err
 	})
-	_ = session.RegisterAfterRespHook(func(response *Response) error {
+	_ = session.RegisterAfterRespHook(func(response *requests.Response) error {
 		result, err := response.JSON()
 		if err != nil {
 			return err
@@ -107,7 +108,7 @@ func TestRequest(t *testing.T) {
 		return err
 	})
 
-	data := Form{
+	data := requests.Form{
 		"id":      fmt.Sprintf("%s%s%s%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"), now.Format("15"), now.Format("04"), now.Format("05")),
 		"command": "queryDoc",
 		"params": map[string]interface{}{
@@ -119,11 +120,12 @@ func TestRequest(t *testing.T) {
 			},
 		},
 	}
-	resp := session.Post(url, headers, data, SessionArgs{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true})
-	if resp.Err != nil {
-		panic(resp.Err)
+	resp := session.Post(url, headers, data, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true})
+	if resp.Error() != nil {
+		panic(resp.Error())
 	}
 	result, _ := resp.JSON()
 	xx, _ := json.MarshalIndent(result, "", "    ")
 	log.Println(string(xx))
+	log.Println(resp.Cost().String())
 }

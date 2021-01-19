@@ -23,7 +23,7 @@ type (
 		beforeRequestHookFuncs []BeforeRequestHookFunc
 		afterResponseHookFuncs []AfterResponseHookFunc
 		option                 []ModifySessionOption
-		args                   SessionArgs
+		args                   Arguments
 	}
 )
 
@@ -40,7 +40,7 @@ var (
 	}
 )
 
-type SessionArgs struct {
+type Arguments struct {
 	Url                string
 	Cookies            []*http.Cookie
 	Proxy              string
@@ -52,12 +52,14 @@ type SessionArgs struct {
 	DisableCompression bool
 }
 
-func (h *SessionArgs) setClientOpt(client *http.Client) error {
+func (h *Arguments) setClientArgs(client *http.Client) error {
 	if !h.AllowRedirects {
 		client.CheckRedirect = disableRedirect
+	} else {
+		client.CheckRedirect = defaultCheckRedirect
 	}
 
-	client.Timeout = h.Timeout * time.Second
+	client.Timeout = h.Timeout
 
 	transport := client.Transport.(*http.Transport)
 	transport.DisableKeepAlives = h.DisableKeepAlive
@@ -80,52 +82,52 @@ func (h *SessionArgs) setClientOpt(client *http.Client) error {
 	return nil
 }
 
-type ModifySessionOption func(session *SessionArgs)
+type ModifySessionOption func(session *Arguments)
 
 func SetUrl(_url string) ModifySessionOption {
-	return func(r *SessionArgs) {
+	return func(r *Arguments) {
 		r.Url = _url
 	}
 }
 
 func SetProxy(_proxy string) ModifySessionOption {
-	return func(r *SessionArgs) {
+	return func(r *Arguments) {
 		r.Proxy = _proxy
 	}
 }
 
 func SetCookies(_cookies []*http.Cookie) ModifySessionOption {
-	return func(r *SessionArgs) {
+	return func(r *Arguments) {
 		r.Cookies = _cookies
 	}
 }
 
 func SetTimeout(_timeout time.Duration) ModifySessionOption {
-	return func(r *SessionArgs) {
+	return func(r *Arguments) {
 		r.Timeout = _timeout
 	}
 }
 
 func SetSkipVerifyTLS(_skipVerifyTLS bool) ModifySessionOption {
-	return func(r *SessionArgs) {
+	return func(r *Arguments) {
 		r.SkipVerifyTLS = _skipVerifyTLS
 	}
 }
 
 func SetDisableKeepAlive(_disableKeepAlive bool) ModifySessionOption {
-	return func(r *SessionArgs) {
+	return func(r *Arguments) {
 		r.DisableKeepAlive = _disableKeepAlive
 	}
 }
 
 func SetDisableCompression(_disableCompression bool) ModifySessionOption {
-	return func(r *SessionArgs) {
+	return func(r *Arguments) {
 		r.DisableCompression = _disableCompression
 	}
 }
 
 func NewSession(opts ...ModifySessionOption) *Session {
-	v := SessionArgs{
+	args := Arguments{
 		Proxy:              "",
 		Timeout:            30 * time.Second,
 		SkipVerifyTLS:      false,
@@ -135,26 +137,26 @@ func NewSession(opts ...ModifySessionOption) *Session {
 	}
 
 	for _, f := range opts {
-		f(&v)
+		f(&args)
 	}
 
 	tranSport := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   v.Timeout,
-			KeepAlive: v.Timeout,
+			Timeout:   args.Timeout,
+			KeepAlive: args.Timeout,
 		}).DialContext,
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: v.SkipVerifyTLS,
+			InsecureSkipVerify: args.SkipVerifyTLS,
 		},
-		DisableKeepAlives:     v.DisableKeepAlive,
-		DisableCompression:    v.DisableCompression,
+		DisableKeepAlives:     args.DisableKeepAlive,
+		DisableCompression:    args.DisableCompression,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
-	if v.Proxy != "" {
-		Url, _ := url.Parse(v.Proxy)
+	if args.Proxy != "" {
+		Url, _ := url.Parse(args.Proxy)
 		proxyUrl := http.ProxyURL(Url)
 		tranSport.Proxy = proxyUrl
 	}
@@ -162,24 +164,24 @@ func NewSession(opts ...ModifySessionOption) *Session {
 	client := &http.Client{}
 	client.Transport = tranSport
 
-	if v.AllowRedirects {
+	if args.AllowRedirects {
 		client.CheckRedirect = defaultCheckRedirect
 	} else {
 		client.CheckRedirect = disableRedirect
 	}
 
-	Url, _ := url.Parse(v.Url)
+	Url, _ := url.Parse(args.Url)
 	session := &Session{
 		Url:       Url,
 		option:    opts,
 		CookieJar: NewCookieJar(),
-		args:      v,
+		args:      args,
 	}
 	client.Jar = session.CookieJar
 	session.Client = client
 
-	if session.Url != nil && v.Cookies != nil {
-		session.CookieJar.SetCookies(session.Url, v.Cookies)
+	if session.Url != nil && args.Cookies != nil {
+		session.CookieJar.SetCookies(session.Url, args.Cookies)
 	}
 	return session
 }
@@ -287,7 +289,7 @@ func (s *Session) Load(path string, _url string) error {
 }
 
 func (s *Session) AsyncDo(method string, urlStr string, ch chan *Response, args ...interface{}) {
-	resp := s.Do(method, urlStr, args)
+	resp := s.Do(method, urlStr, args...)
 	ch <- resp
 }
 
@@ -302,19 +304,18 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 		urlStrParsed, err := url.Parse(urlStr)
 		if err != nil {
 			return &Response{
-				Err: err,
+				err: err,
 			}
 		}
 		urlStrParsed.RawQuery = urlStrParsed.Query().Encode()
 
-		req, err := http.NewRequest(method, urlStrParsed.String(), nil)
+		s.request = &Request{Files: make([]*File, 0)}
+		s.request.Request, err = http.NewRequest(method, urlStrParsed.String(), nil)
 		if err != nil {
 			return &Response{
-				Err: err,
+				err: err,
 			}
 		}
-		s.request = &Request{}
-		s.request.Request = req
 		s.request.Header.Set("User-Agent", RandomUserAgent(nil))
 
 		if s.Client == nil {
@@ -338,8 +339,8 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 				s.request.Form = _arg
 			case Payload:
 				s.request.Payload = _arg
-			case Files:
-				s.request.Files = _arg
+			case *File:
+				s.request.Files = append(s.request.Files, _arg)
 			case string:
 				body := strings.NewReader(_arg)
 				s.request.Request.Body = ioutil.NopCloser(body)
@@ -352,23 +353,17 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 				if !s.request.Chunked {
 					s.request.Request.ContentLength = int64(len(_arg))
 				}
-			case http.Header:
-				for key, values := range _arg {
-					for _, value := range values {
-						s.request.Request.Header.Add(key, value)
-					}
-				}
 			case *http.Cookie:
 				s.request.Request.AddCookie(_arg)
 			case []*http.Cookie:
 				for _, cookie := range _arg {
 					s.request.Request.AddCookie(cookie)
 				}
-			case SessionArgs:
-				err := _arg.setClientOpt(s.Client)
+			case Arguments:
+				err := _arg.setClientArgs(s.Client)
 				if err != nil {
 					return &Response{
-						Err: err,
+						err: err,
 					}
 				}
 			}
@@ -381,27 +376,32 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 			}
 		}
 
-		err = s.request.setRequestOpt()
+		err = s.request.setRequestArgs()
 		if err != nil {
 			return &Response{
-				Err: err,
+				err: err,
 			}
 		}
 
 	default:
 		return &Response{
-			Err: ErrInvalidMethod,
+			err: ErrInvalidMethod,
 		}
 	}
 
+	before := time.Now()
 	r, err := s.Client.Do(s.request.Request)
+	after := time.Now()
+	cost := after.Sub(before)
+
 	if err != nil {
 		return &Response{
-			Err: err,
+			cost: cost,
+			err:  err,
 		}
 	}
 
-	resp := NewResponse(r)
+	resp := NewResponse(r, cost)
 
 	for _, fn := range s.afterResponseHookFuncs {
 		err = fn(resp)
@@ -479,54 +479,68 @@ func (s *Session) Get(url string, args ...interface{}) *Response {
 	return s.Do("get", url, args...)
 }
 
-func (s *Session) AsyncGet(url string, c chan *Response, args ...interface{}) {
-	go s.AsyncDo("get", url, c, args)
+func (s *Session) AsyncGet(url string, args ...interface{}) *AsyncResponse {
+	c := make(chan *Response, 1)
+	go s.AsyncDo("get", url, c, args...)
+	return &AsyncResponse{wg: &sync.WaitGroup{}, c: c}
 }
 
 func (s *Session) Post(url string, args ...interface{}) *Response {
 	return s.Do("post", url, args...)
 }
 
-func (s *Session) AsyncPost(url string, c chan *Response, args ...interface{}) {
-	go s.AsyncDo("post", url, c, args)
+func (s *Session) AsyncPost(url string, args ...interface{}) *AsyncResponse {
+	c := make(chan *Response, 1)
+	go s.AsyncDo("post", url, c, args...)
+	return &AsyncResponse{wg: &sync.WaitGroup{}, c: c}
 }
 
 func (s *Session) Head(url string, args ...interface{}) *Response {
 	return s.Do("head", url, args...)
 }
 
-func (s *Session) AsyncHead(url string, c chan *Response, args ...interface{}) {
-	go s.AsyncDo("head", url, c, args)
+func (s *Session) AsyncHead(url string, args ...interface{}) *AsyncResponse {
+	c := make(chan *Response, 1)
+	go s.AsyncDo("head", url, c, args...)
+	return &AsyncResponse{wg: &sync.WaitGroup{}, c: c}
 }
 
 func (s *Session) Delete(url string, args ...interface{}) *Response {
 	return s.Do("delete", url, args...)
 }
 
-func (s *Session) AsyncDelete(url string, c chan *Response, args ...interface{}) {
-	go s.AsyncDo("delete", url, c, args)
+func (s *Session) AsyncDelete(url string, args ...interface{}) *AsyncResponse {
+	c := make(chan *Response, 1)
+	go s.AsyncDo("delete", url, c, args...)
+	return &AsyncResponse{wg: &sync.WaitGroup{}, c: c}
 }
 
 func (s *Session) Options(url string, args ...interface{}) *Response {
 	return s.Do("options", url, args...)
 }
 
-func (s *Session) AsyncOption(url string, c chan *Response, args ...interface{}) {
-	go s.AsyncDo("option", url, c, args)
+func (s *Session) AsyncOptions(url string, args ...interface{}) *AsyncResponse {
+	c := make(chan *Response, 1)
+	go s.AsyncDo("option", url, c, args...)
+	return &AsyncResponse{wg: &sync.WaitGroup{}, c: c}
 }
 
 func (s *Session) Put(url string, args ...interface{}) *Response {
 	return s.Do("put", url, args...)
 }
 
-func (s *Session) AsyncPut(url string, c chan *Response, args ...interface{}) {
-	go s.AsyncDo("put", url, c, args)
+func (s *Session) AsyncPut(url string, args ...interface{}) *AsyncResponse {
+	c := make(chan *Response, 1)
+	go s.AsyncDo("put", url, c, args...)
+	return &AsyncResponse{wg: &sync.WaitGroup{}, c: c}
 }
 
 func (s *Session) Patch(url string, args ...interface{}) *Response {
 	return s.Do("patch", url, args...)
 }
 
-func (s *Session) AsyncPatch(url string, c chan *Response, args ...interface{}) {
-	go s.AsyncDo("patch", url, c, args)
+func (s *Session) AsyncPatch(url string, args ...interface{}) *AsyncResponse {
+	c := make(chan *Response, 1)
+	go s.AsyncDo("patch", url, c, args...)
+	return &AsyncResponse{wg: &sync.WaitGroup{}, c: c}
 }

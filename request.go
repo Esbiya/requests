@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var (
@@ -59,8 +60,15 @@ type Request struct {
 	Form    Form
 	Payload Payload
 	Binary  []byte
-	Files   Files
-	Chunked bool
+	Files   []*File
+
+	Proxy              string
+	Timeout            time.Duration
+	SkipVerifyTLS      bool
+	Chunked            bool
+	AllowRedirects     bool
+	DisableKeepAlive   bool
+	DisableCompression bool
 }
 
 func (r *Request) isConflict() bool {
@@ -71,7 +79,7 @@ func (r *Request) isConflict() bool {
 	if r.Payload != nil {
 		count++
 	}
-	if r.Files != nil {
+	if len(r.Files) != 0 {
 		count++
 	}
 	if r.Binary != nil {
@@ -109,8 +117,7 @@ func (r *Request) setForm() error {
 
 		vs, ok := v.(string)
 		if !ok {
-			return fmt.Errorf(
-				"post data %v[%T] must be string type", v, v)
+			return fmt.Errorf("post data %v[%T] must be string type", v, v)
 		}
 		vs = url.QueryEscape(vs)
 		data = fmt.Sprintf("%s&%s=%s", data, k, vs)
@@ -161,55 +168,50 @@ func (r *Request) setFiles() error {
 		}
 	}()
 
-	for name, value := range r.Files {
-		switch value := value.(type) {
-		case *FileOption:
-			mimeType := value.MimeType
-			if mimeType == "" {
-				mimeType = "application/octet-stream"
-			}
+	for _, file := range r.Files {
+		mimeType := file.MimeType
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
 
-			h := make(textproto.MIMEHeader)
-			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, escapeQuotes(name), escapeQuotes(value.FileName)))
-			h.Set("Content-Type", mimeType)
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, escapeQuotes(file.Param), escapeQuotes(file.Name)))
+		h.Set("Content-Type", mimeType)
 
-			var fileWriter io.Writer
-			var err error
-			fileParam := value.FileParam
-			if fileParam != "" {
-				fileWriter, err = writer.CreateFormFile(fileParam, filepath.Base(value.FilePath))
-			} else {
-				fileWriter, err = writer.CreatePart(h)
+		var fileWriter io.Writer
+		var err error
+		fileParam := file.Param
+		if fileParam != "" {
+			fileWriter, err = writer.CreateFormFile(fileParam, filepath.Base(file.Path))
+		} else {
+			fileWriter, err = writer.CreatePart(h)
+		}
+		if err != nil {
+			return err
+		}
+
+		if len(file.Src) != 0 {
+			_, err = fileWriter.Write(file.Src)
+			if err != nil {
+				return err
 			}
+		} else {
+			fp, err = os.Open(file.Path)
 			if err != nil {
 				return err
 			}
 
-			if len(value.Src) != 0 {
-				_, err = fileWriter.Write(value.Src)
-				if err != nil {
-					return err
-				}
-			} else {
-				fp, err = os.Open(value.FilePath)
-				if err != nil {
-					return err
-				}
-
-				_, err = io.Copy(fileWriter, fp)
-				if err != nil {
-					return err
-				}
+			_, err = io.Copy(fileWriter, fp)
+			if err != nil {
+				return err
 			}
+		}
 
-		case string:
+		for name, value := range file.Args {
 			err := writer.WriteField(name, value)
 			if err != nil {
 				return err
 			}
-
-		default:
-			return ErrFileInfo
 		}
 	}
 
@@ -238,9 +240,32 @@ func (r *Request) setAuth() error {
 	return nil
 }
 
-func (r *Request) setRequestOpt() error {
+func (r *Request) setRequestArgs() error {
 	if r.isConflict() {
 		return ErrParamConflict
+	}
+
+	if r.Headers != nil {
+		for key, value := range r.Headers {
+			r.Request.Header[key] = []string{value}
+		}
+	}
+
+	if r.Cookies != nil {
+		for cookieK, cookieV := range r.Cookies {
+			c := &http.Cookie{
+				Name:  cookieK,
+				Value: cookieV,
+			}
+			r.Request.AddCookie(c)
+		}
+	}
+
+	if r.Auth != nil {
+		err := r.setAuth()
+		if err != nil {
+			return err
+		}
 	}
 
 	if r.Params != nil {
@@ -271,31 +296,8 @@ func (r *Request) setRequestOpt() error {
 		}
 	}
 
-	if r.Files != nil {
+	if len(r.Files) != 0 {
 		err := r.setFiles()
-		if err != nil {
-			return err
-		}
-	}
-
-	if r.Headers != nil {
-		for key, value := range r.Headers {
-			r.Request.Header[key] = []string{value}
-		}
-	}
-
-	if r.Cookies != nil {
-		for cookieK, cookieV := range r.Cookies {
-			c := &http.Cookie{
-				Name:  cookieK,
-				Value: cookieV,
-			}
-			r.Request.AddCookie(c)
-		}
-	}
-
-	if r.Auth != nil {
-		err := r.setAuth()
 		if err != nil {
 			return err
 		}
@@ -306,35 +308,35 @@ func (r *Request) setRequestOpt() error {
 
 func Get(url string, args ...interface{}) *Response {
 	session := NewSession()
-	return session.Get(url, args)
+	return session.Get(url, args...)
 }
 
 func Post(url string, args ...interface{}) *Response {
 	session := NewSession()
-	return session.Post(url, args)
+	return session.Post(url, args...)
 }
 
 func Head(url string, args ...interface{}) *Response {
 	session := NewSession()
-	return session.Head(url, args)
+	return session.Head(url, args...)
 }
 
 func Delete(url string, args ...interface{}) *Response {
 	session := NewSession()
-	return session.Delete(url, args)
+	return session.Delete(url, args...)
 }
 
 func Options(url string, args ...interface{}) *Response {
 	session := NewSession()
-	return session.Options(url, args)
+	return session.Options(url, args...)
 }
 
 func Put(url string, args ...interface{}) *Response {
 	session := NewSession()
-	return session.Put(url, args)
+	return session.Put(url, args...)
 }
 
 func Patch(url string, args ...interface{}) *Response {
 	session := NewSession()
-	return session.Patch(url, args)
+	return session.Patch(url, args...)
 }
