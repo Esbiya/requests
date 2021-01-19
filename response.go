@@ -114,11 +114,11 @@ func (r *Response) SetEncode(e string) error {
 	return nil
 }
 
-func (r Response) GetEncode() string {
+func (r *Response) GetEncode() string {
 	return r.encoding
 }
 
-func (r Response) SaveFile(filename string) error {
+func (r *Response) SaveFile(filename string) error {
 	dst, err := os.Create(filename)
 	if err != nil {
 		return err
