@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+const (
+	Chrome = 1
+	Safari = 2
+	IE     = 3
+	Opera  = 4
+)
+
 func Exists(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil {
@@ -41,13 +48,13 @@ func RandomUserAgent(t interface{}) string {
 		t = RandomNum(1, 4)
 	}
 	switch t {
-	case 1:
+	case Chrome:
 		return fakeUserAgent.Chrome()
-	case 2:
+	case Safari:
 		return fakeUserAgent.Safari()
-	case 3:
+	case IE:
 		return fakeUserAgent.IE()
-	case 4:
+	case Opera:
 		return fakeUserAgent.Opera()
 	default:
 		return fakeUserAgent.Random()

@@ -341,6 +341,8 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 				s.request.Payload = _arg
 			case *File:
 				s.request.Files = append(s.request.Files, _arg)
+			case []*File:
+				s.request.Files = append(s.request.Files, _arg...)
 			case string:
 				body := strings.NewReader(_arg)
 				s.request.Request.Body = ioutil.NopCloser(body)

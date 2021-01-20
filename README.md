@@ -514,6 +514,21 @@ resp.Close               // tcp 连接是否已关闭 bool
 reso.Cost()              // 请求耗时
 ```
 
+### 随机 ua
+
+```go
+ua := requests.RandomUserAgent(requests.Chrome)
+log.Println(ua)
+ua1 := requests.RandomUserAgent(requests.Safari)
+log.Println(ua1)
+ua2 := requests.RandomUserAgent(requests.IE)
+log.Println(ua2)
+ua3 := requests.RandomUserAgent(requests.Opera)
+log.Println(ua3)
+ua4 := requests.RandomUserAgent(nil)
+log.Println(ua4)
+```
+
 ### 代码自动生成
 
 * 复制请求的 curl 使用脚本 generateScript.js 即可生成标准 requests 代码

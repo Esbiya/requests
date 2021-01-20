@@ -247,7 +247,8 @@ func TestPostFile(t *testing.T) {
 		Args:  map[string]string{},                                               // 其他参数
 	}
 	// 支持多表单上传
-	resp := session.Post("https://files-wpa.chat.zalo.me/api/message/upthumb", headers, params, file, file1, file2)
+	files := []*requests.File{file, file1, file2}
+	resp := session.Post("https://files-wpa.chat.zalo.me/api/message/upthumb", headers, params, file, file1, file2, files)
 	if resp.Error() != nil {
 		log.Fatal(resp.Error())
 	}

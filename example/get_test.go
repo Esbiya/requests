@@ -3,13 +3,26 @@ package example
 import (
 	"github.com/Esbiya/requests"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
 
 func TestGet(t *testing.T) {
-	params := requests.Params{"1": "2"}
-	resp := requests.Get("https://www.baidu.com", params, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true})
+	params := requests.Params{"test": "123"}
+	queryHandler := func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		for key, value := range params {
+			if v := query.Get(key); value != v {
+				t.Errorf("query param %s = %s; want = %s", key, v, value)
+			}
+		}
+		_, _ = w.Write([]byte(query.Encode()))
+	}
+	server := httptest.NewServer(http.HandlerFunc(queryHandler))
+
+	resp := requests.Get(server.URL, params)
 	if resp.Error() != nil {
 		log.Fatal(resp.Error())
 	}
@@ -18,8 +31,20 @@ func TestGet(t *testing.T) {
 }
 
 func TestSessionGet(t *testing.T) {
+	params := requests.Params{"test": "123"}
+	queryHandler := func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		for key, value := range params {
+			if v := query.Get(key); value != v {
+				t.Errorf("query param %s = %s; want = %s", key, v, value)
+			}
+		}
+		_, _ = w.Write([]byte(query.Encode()))
+	}
+	server := httptest.NewServer(http.HandlerFunc(queryHandler))
+
 	session := requests.NewSession()
-	resp := session.Get("https://www.baidu.com")
+	resp := session.Get(server.URL, params)
 	if resp.Error() != nil {
 		log.Fatal(resp.Error())
 	}
@@ -28,15 +53,28 @@ func TestSessionGet(t *testing.T) {
 }
 
 func TestAsyncGet(t *testing.T) {
+	params := requests.Params{"test": "123"}
+	queryHandler := func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		for key, value := range params {
+			if v := query.Get(key); value != v {
+				t.Errorf("query param %s = %s; want = %s", key, v, value)
+			}
+		}
+		_, _ = w.Write([]byte(query.Encode()))
+	}
+	server := httptest.NewServer(http.HandlerFunc(queryHandler))
+
 	start := time.Now()
 	for i := 0; i < 10; i++ {
 		headers := requests.Headers{
 			"Connection": "keep-alive",
 		}
-		requests.AsyncGet("https://www.baidu.com", headers).Then(func(r *requests.Response) {
+		requests.AsyncGet(server.URL, headers, params).Then(func(r *requests.Response) {
 			if r.Error() != nil {
 				log.Fatal(r.Error())
 			}
+			log.Println(r.Text)
 			log.Println("function cost => " + r.Cost().String())
 		})
 	}
@@ -47,6 +85,18 @@ func TestAsyncGet(t *testing.T) {
 }
 
 func TestSessionAsyncGet(t *testing.T) {
+	params := requests.Params{"test": "123"}
+	queryHandler := func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		for key, value := range params {
+			if v := query.Get(key); value != v {
+				t.Errorf("query param %s = %s; want = %s", key, v, value)
+			}
+		}
+		_, _ = w.Write([]byte(query.Encode()))
+	}
+	server := httptest.NewServer(http.HandlerFunc(queryHandler))
+
 	start := time.Now()
 	session := requests.NewSession()
 	for i := 0; i < 10; i++ {
@@ -54,10 +104,11 @@ func TestSessionAsyncGet(t *testing.T) {
 		headers := requests.Headers{
 			"Connection": "keep-alive",
 		}
-		session.AsyncGet("https://www.baidu.com", c, headers).Then(func(r *requests.Response) {
+		session.AsyncGet(server.URL, c, headers, params).Then(func(r *requests.Response) {
 			if r.Error() != nil {
 				log.Fatal(r.Error())
 			}
+			log.Println(r.Text)
 			log.Println("function cost => " + r.Cost().String())
 		})
 	}
