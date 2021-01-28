@@ -12,7 +12,6 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -180,12 +179,8 @@ func (r *Request) setFiles() error {
 
 		var fileWriter io.Writer
 		var err error
-		fileParam := file.Param
-		if fileParam != "" {
-			fileWriter, err = writer.CreateFormFile(fileParam, filepath.Base(file.Path))
-		} else {
-			fileWriter, err = writer.CreatePart(h)
-		}
+
+		fileWriter, err = writer.CreatePart(h)
 		if err != nil {
 			return err
 		}

@@ -8,5 +8,4 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/wuxiaoxiaoshen/fakeuseragent v1.0.0
-	golang.org/x/sys v0.0.0-20210113181707-4bcb84eeeb78 // indirect
 )

@@ -47,4 +47,3 @@ func TestCookies(t *testing.T) {
 	log.Println(resp.Text)
 	log.Println(resp.Cost().String())
 }
-
