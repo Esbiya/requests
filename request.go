@@ -44,6 +44,12 @@ const (
 
 type Params map[string]string
 
+func (d *Params) Update(s Params) {
+	for k, v := range s {
+		(*d)[k] = v
+	}
+}
+
 var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
 
 func escapeQuotes(s string) string {

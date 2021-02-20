@@ -21,6 +21,24 @@ type (
 	}
 )
 
+func (d *Auth) Update(s Auth) {
+	for k, v := range s {
+		(*d)[k] = v
+	}
+}
+
+func (d *Form) Update(s Form) {
+	for k, v := range s {
+		(*d)[k] = v
+	}
+}
+
+func (d *Payload) Update(s Payload) {
+	for k, v := range s {
+		(*d)[k] = v
+	}
+}
+
 func FileFromBytes(filename string, src []byte) *File {
 	return &File{
 		Src:  src,

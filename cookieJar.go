@@ -19,6 +19,12 @@ type BaseCookies []*http.Cookie
 
 type SimpleCookie map[string]string
 
+func (s *SimpleCookie) Update(c SimpleCookie) {
+	for k, v := range c {
+		(*s)[k] = v
+	}
+}
+
 func (s BaseCookies) Bytes() ([]byte, error) {
 	return json.Marshal(s)
 }
