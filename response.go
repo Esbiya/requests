@@ -81,7 +81,7 @@ func (r *Response) CallbackJSON() (gjson.Result, error) {
 	if r.StatusCode != http.StatusOK {
 		return gjson.Result{}, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
 	}
-	re, _ := regexp.Compile("\\({[\\s\\S]*?}\\)")
+	re, _ := regexp.Compile(`\(\s*{[\s\S]*?}\s*\)`)
 	y := re.FindStringSubmatch(r.Text)
 	if len(y) == 0 {
 		return gjson.Result{}, ErrNotJSONResponse
