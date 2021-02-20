@@ -96,10 +96,9 @@ func TestRequest(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		data := result["data"].(map[string]interface{})
-		if _, ok := data["secretKey"]; ok {
-			b, _ := base64.StdEncoding.DecodeString(data["content"].(string))
-			response.Bytes, err = openssl.Des3CBCDecrypt(b, []byte(data["secretKey"].(string)), []byte(iv), openssl.PKCS7_PADDING)
+		if result.Get("data.secretKey").Exists() {
+			b, _ := base64.StdEncoding.DecodeString(result.Get("data.content").String())
+			response.Bytes, err = openssl.Des3CBCDecrypt(b, []byte(result.Get("data.secretKey").String()), []byte(iv), openssl.PKCS7_PADDING)
 			if err != nil {
 				return err
 			}

@@ -1,6 +1,7 @@
 package example
 
 import (
+	"encoding/json"
 	"github.com/Esbiya/requests"
 	"log"
 	"net/http"
@@ -18,7 +19,12 @@ func TestGet(t *testing.T) {
 				t.Errorf("query param %s = %s; want = %s", key, v, value)
 			}
 		}
-		_, _ = w.Write([]byte(query.Encode()))
+		x, _ := json.Marshal(map[string]interface{}{
+			"xxx": map[string]interface{}{
+				"yyy": 11111,
+			},
+		})
+		_, _ = w.Write(x)
 	}
 	server := httptest.NewServer(http.HandlerFunc(queryHandler))
 
@@ -26,7 +32,8 @@ func TestGet(t *testing.T) {
 	if resp.Error() != nil {
 		log.Fatal(resp.Error())
 	}
-	log.Println(resp.Text)
+	result, _ := resp.JSON()
+	log.Println(result.Get("xxx.yyy"))
 	log.Println(resp.Cost().String())
 }
 

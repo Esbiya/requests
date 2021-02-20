@@ -2,10 +2,10 @@ package requests
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/xml"
 	"github.com/axgle/mahonia"
 	"github.com/pkg/errors"
+	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -64,42 +64,29 @@ func (r *Response) XML(v interface{}) error {
 	return xml.Unmarshal(r.Bytes, v)
 }
 
-func (r *Response) JSON() (map[string]interface{}, error) {
+func (r *Response) JSON() (gjson.Result, error) {
 	if r.err != nil {
-		return nil, r.err
+		return gjson.Result{}, r.err
 	}
 	if r.StatusCode != http.StatusOK {
-		return nil, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
+		return gjson.Result{}, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
 	}
-	var result map[string]interface{}
-	dec := json.NewDecoder(bytes.NewBuffer(r.Bytes))
-	// 将处理的数字转化成 json.Number 的形式，防止丢失精度
-	dec.UseNumber()
-	if err := dec.Decode(&result); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return gjson.ParseBytes(r.Bytes), nil
 }
 
-func (r *Response) CallbackJSON() (map[string]interface{}, error) {
+func (r *Response) CallbackJSON() (gjson.Result, error) {
 	if r.err != nil {
-		return nil, r.err
+		return gjson.Result{}, r.err
 	}
 	if r.StatusCode != http.StatusOK {
-		return nil, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
+		return gjson.Result{}, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
 	}
-	var result map[string]interface{}
 	re, _ := regexp.Compile("\\({[\\s\\S]*?}\\)")
 	y := re.FindStringSubmatch(r.Text)
 	if len(y) == 0 {
-		return result, ErrNotJSONResponse
+		return gjson.Result{}, ErrNotJSONResponse
 	}
-	decoder := json.NewDecoder(bytes.NewReader([]byte(y[0][1 : len(y[0])-1])))
-	decoder.UseNumber()
-	if err := decoder.Decode(&result); err != nil {
-		return result, ErrNotJSONResponse
-	}
-	return result, nil
+	return gjson.ParseBytes([]byte(y[0][1 : len(y[0])-1])), nil
 }
 
 func (r *Response) SetEncode(e string) error {

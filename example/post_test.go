@@ -255,3 +255,16 @@ func TestPostFile(t *testing.T) {
 	log.Println(resp.Text)
 	log.Println(resp.Cost().String())
 }
+
+func TestUpload(t *testing.T) {
+	resp, err := requests.Post("http://192.168.0.42:30161/out_upload", &requests.File{
+		Path:     "/Users/esbiya/Desktop/javaProjects/app/apps/postern.apk",
+		Name:     "postern.apk",
+		Param:    "file",
+		MimeType: "application/vnd.android.package-archive",
+	}).JSON()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(resp)
+}
