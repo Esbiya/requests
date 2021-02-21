@@ -24,6 +24,10 @@ type Response struct {
 	err      error
 }
 
+var validStatusCode = [...]int{
+	http.StatusOK, http.StatusCreated,
+}
+
 func NewResponse(r *http.Response, cost time.Duration) *Response {
 	resp := &Response{
 		Response: r,
@@ -68,7 +72,7 @@ func (r *Response) JSON() (gjson.Result, error) {
 	if r.err != nil {
 		return gjson.Result{}, r.err
 	}
-	if r.StatusCode != http.StatusOK {
+	if r.StatusCode != http.StatusOK && r.StatusCode != http.StatusCreated {
 		return gjson.Result{}, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
 	}
 	return gjson.ParseBytes(r.Bytes), nil
@@ -78,7 +82,7 @@ func (r *Response) CallbackJSON() (gjson.Result, error) {
 	if r.err != nil {
 		return gjson.Result{}, r.err
 	}
-	if r.StatusCode != http.StatusOK {
+	if r.StatusCode != http.StatusOK && r.StatusCode != http.StatusCreated {
 		return gjson.Result{}, errors.New("invalid response code: " + strconv.Itoa(r.StatusCode))
 	}
 	re, _ := regexp.Compile(`\(\s*{[\s\S]*?}\s*\)`)
