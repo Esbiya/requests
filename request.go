@@ -50,6 +50,20 @@ func (d *Params) Update(s Params) {
 	}
 }
 
+func (d *Params) Encode() string {
+	var buf strings.Builder
+	for k, v := range *d {
+		keyEscaped := url.QueryEscape(k)
+		if buf.Len() > 0 {
+			buf.WriteByte('&')
+		}
+		buf.WriteString(keyEscaped)
+		buf.WriteByte('=')
+		buf.WriteString(url.QueryEscape(v))
+	}
+	return buf.String()
+}
+
 var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
 
 func escapeQuotes(s string) string {

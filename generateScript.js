@@ -603,7 +603,7 @@ const toGoRequests = curlCommand => {
         requestLineBody += ", headers";
     }
     if (request.cookies) {
-        code += `\tcookies := requests.SimpleCookies${jsonIndent(request.cookies, '\t\t')}\n`;
+        code += `\tcookies := requests.SimpleCookie${jsonIndent(request.cookies, '\t\t')}\n`;
         requestLineBody += ", cookies";
     }
     if (request.auth) {
