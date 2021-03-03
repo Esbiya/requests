@@ -122,3 +122,11 @@ func (r *Response) SaveFile(filename string) error {
 	}
 	return nil
 }
+
+func (r *Response) Location() (string, error) {
+	location := r.Header.Get("Location")
+	if location == "" {
+		return "", errors.New("http: no Location header in response")
+	}
+	return location, nil
+}
