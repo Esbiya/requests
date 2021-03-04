@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"encoding/json"
 	"path/filepath"
 )
 
@@ -37,6 +38,11 @@ func (d *Payload) Update(s Payload) {
 	for k, v := range s {
 		(*d)[k] = v
 	}
+}
+
+func (d *Payload) Stringify() string {
+	b, _ := json.Marshal(d)
+	return string(b)
 }
 
 func FileFromBytes(filename string, src []byte) *File {

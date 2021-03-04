@@ -591,11 +591,14 @@ const serializeCookies = cookieDict => {
     return cookieString
 }
 
-const toGoRequests = curlCommand => {
+function toGoRequests(curlCommand, blank) {
     const request = parseCurlCommand(curlCommand);
-    let code = 'package main\n\n';
-    code += 'import (\n\t"github.com/Esbiya/requests"\n\t"log"\n)\n\n';
-    code += 'func main() {\n';
+    let code = "";
+    if (blank === "0") {
+        code += 'package main\n\n';
+        code += 'import (\n\t"github.com/Esbiya/requests"\n\t"log"\n)\n\n';
+        code += 'func main() {\n';
+    }
     code += `\turl := "${request.url}"\n`;
     let requestLineBody = '\tresp := requests.' + capitalizeUpper(request.method) + "(url";
     if (request.headers) {
@@ -635,25 +638,24 @@ const toGoRequests = curlCommand => {
         }
         requestLineBody += ", data";
     }
-    let args = ", requests.Arguments{\n";
+    let args1 = ", requests.Arguments{\n";
     let argsLongest;
     if (request.proxy) {
-        args += `\t\tProxy: "${request.proxy}",\n`;
+        args1 += `\t\tProxy: "${request.proxy}",\n`;
         argsLongest = 5;
     }
     if (request.insecure) {
-        args += "\t\tSkipVerifyTLS: true,\n";
-        args = padSpace(args, "Proxy", 13 - argsLongest);
+        args1 += "\t\tSkipVerifyTLS: true,\n";
+        args1 = padSpace(args, "Proxy", 13 - argsLongest);
     }
-    args.length > 22 && (requestLineBody += args);
-    requestLineBody += ')\n';
+    args1.length > 22 && (requestLineBody += args1);
+    requestLineBody += '})\n';
     code += requestLineBody;
     code += '\tif resp.Error() != nil {\n\t\tlog.Fatal(resp.Error())\n\t}\n';
     code += '\tlog.Println(resp.Text)\n';
-    code += '}';
-
+    if (blank === "0") code += '}';
     return code + '\n';
-};
+}
 
 const toJSONString = function (curlCommand) {
     function repr (value, isKey) {
@@ -1468,7 +1470,7 @@ const toCpr = (curlCommand) => {
     return code + '\n';
 }
 
-const curlTransfer = (curlCommand, language) => {
+const curlTransfer = (curlCommand, language, blank) => {
     var result;
     switch (language) {
         case "golang":
@@ -1496,14 +1498,14 @@ const curlTransfer = (curlCommand, language) => {
             result = toCpr(curlCommand);
             break;
         default:
-            result = toGoRequests(curlCommand);
+            result = toGoRequests(curlCommand, blank);
             break;
     }
     return result;
 }
 
 var args = process.argv.splice(2);
-const ret = curlTransfer(args[0], args[1]);
+const ret = curlTransfer(args[0], args[1], args[2]);
 console.log(ret);
 
 const copyCommand = process.platform === "darwin" ? "pbcopy" : "clip";
