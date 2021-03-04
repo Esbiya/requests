@@ -591,10 +591,10 @@ const serializeCookies = cookieDict => {
     return cookieString
 }
 
-function toGoRequests(curlCommand, blank) {
+function toGoRequests(curlCommand, blank = "all") {
     const request = parseCurlCommand(curlCommand);
     let code = "";
-    if (blank === "0") {
+    if (blank === "all") {
         code += 'package main\n\n';
         code += 'import (\n\t"github.com/Esbiya/requests"\n\t"log"\n)\n\n';
         code += 'func main() {\n';
@@ -653,7 +653,7 @@ function toGoRequests(curlCommand, blank) {
     code += requestLineBody;
     code += '\tif resp.Error() != nil {\n\t\tlog.Fatal(resp.Error())\n\t}\n';
     code += '\tlog.Println(resp.Text)\n';
-    if (blank === "0") code += '}';
+    if (blank === "all") code += '}';
     return code + '\n';
 }
 
@@ -1497,15 +1497,18 @@ const curlTransfer = (curlCommand, language, blank) => {
         case "cpp":
             result = toCpr(curlCommand);
             break;
+        case "requests":
+            result = toGoRequests(curlCommand);
+            break;
         default:
-            result = toGoRequests(curlCommand, blank);
+            result = toGoRequests(curlCommand, "");
             break;
     }
     return result;
 }
 
 var args = process.argv.splice(2);
-const ret = curlTransfer(args[0], args[1], args[2]);
+const ret = curlTransfer(args[0], args[1]);
 console.log(ret);
 
 const copyCommand = process.platform === "darwin" ? "pbcopy" : "clip";

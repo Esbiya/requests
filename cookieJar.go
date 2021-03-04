@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -36,15 +37,20 @@ func (s BaseCookies) Array() ([]map[string]interface{}, error) {
 	return cookies, err
 }
 
-func (s BaseCookies) Map() (map[string]interface{}, error) {
+func (s BaseCookies) Map() map[string]interface{} {
 	cookies := map[string]interface{}{}
 	for _, cookie := range s {
 		cookies[(*cookie).Name] = (*cookie).Value
 	}
-	return cookies, nil
+	return cookies
 }
 
-func (s BaseCookies) String() (string, error) {
+func (s BaseCookies) JSON() gjson.Result {
+	b, _ := s.Bytes()
+	return gjson.ParseBytes(b)
+}
+
+func (s BaseCookies) String() string {
 	r := ""
 	for _, cookie := range s {
 		r += (*cookie).Name + "=" + (*cookie).Value + "; "
@@ -52,7 +58,7 @@ func (s BaseCookies) String() (string, error) {
 	if r != "" {
 		r = r[:len(r)-2]
 	}
-	return r, nil
+	return r
 }
 
 type CookieJar struct {

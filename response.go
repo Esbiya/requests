@@ -126,3 +126,12 @@ func (r *Response) SaveFile(filename string) error {
 func (r *Response) Location() string {
 	return r.Header.Get("Location")
 }
+
+func (r *Response) Cookie(key string) string {
+	for _, cookie := range r.Cookies() {
+		if cookie.Name == key {
+			return cookie.Value
+		}
+	}
+	return ""
+}
