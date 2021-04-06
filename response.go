@@ -3,9 +3,6 @@ package requests
 import (
 	"bytes"
 	"encoding/xml"
-	"github.com/axgle/mahonia"
-	"github.com/pkg/errors"
-	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -13,6 +10,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/axgle/mahonia"
+	"github.com/pkg/errors"
+	"github.com/tidwall/gjson"
 )
 
 type Response struct {
@@ -66,6 +68,22 @@ func (r *Response) Cost() time.Duration {
 
 func (r *Response) XML(v interface{}) error {
 	return xml.Unmarshal(r.Bytes, v)
+}
+
+func (r *Response) Document() (*goquery.Document, error) {
+	return goquery.NewDocumentFromReader(strings.NewReader(r.Text))
+}
+
+func (r *Response) ParseInputForm(doc *goquery.Document, id string) Form {
+	data := Form{}
+	doc.Find("#" + id).Find("input").Each(func(i int, c *goquery.Selection) {
+		key, exit := c.Attr("name")
+		value, exit1 := c.Attr("value")
+		if exit && exit1 && key != "" {
+			data[key] = value
+		}
+	})
+	return data
 }
 
 func (r *Response) JSON() (gjson.Result, error) {

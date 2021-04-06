@@ -2,12 +2,13 @@ package example
 
 import (
 	"encoding/json"
-	"github.com/Esbiya/requests"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/Esbiya/requests"
 )
 
 func TestGet(t *testing.T) {

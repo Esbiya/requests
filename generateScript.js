@@ -649,7 +649,7 @@ function toGoRequests(curlCommand, blank = "all") {
         args1 = padSpace(args, "Proxy", 13 - argsLongest);
     }
     args1.length > 22 && (requestLineBody += args1);
-    requestLineBody += '})\n';
+    requestLineBody += ')\n';
     code += requestLineBody;
     code += '\tif resp.Error() != nil {\n\t\tlog.Fatal(resp.Error())\n\t}\n';
     code += '\tlog.Println(resp.Text)\n';

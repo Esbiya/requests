@@ -1,10 +1,11 @@
 package example
 
 import (
-	"github.com/Esbiya/requests"
 	"io/ioutil"
 	"log"
 	"testing"
+
+	"github.com/Esbiya/requests"
 )
 
 func TestPostForm(t *testing.T) {

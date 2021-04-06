@@ -4,14 +4,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/Esbiya/requests"
-	"github.com/forgoer/openssl"
-	"github.com/gofrs/uuid"
 	"log"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Esbiya/requests"
+	"github.com/forgoer/openssl"
+	"github.com/gofrs/uuid"
 )
 
 func genKey() string {

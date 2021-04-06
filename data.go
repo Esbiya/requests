@@ -34,6 +34,11 @@ func (d *Form) Update(s Form) {
 	}
 }
 
+func (d *Form) Stringify() string {
+	b, _ := json.Marshal(d)
+	return string(b)
+}
+
 func (d *Payload) Update(s Payload) {
 	for k, v := range s {
 		(*d)[k] = v

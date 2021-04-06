@@ -2,11 +2,12 @@ package example
 
 import (
 	"encoding/json"
-	"github.com/Esbiya/requests"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Esbiya/requests"
 )
 
 func TestHeaders(t *testing.T) {
