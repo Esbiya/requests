@@ -327,17 +327,17 @@ func (s *Session) Do(method string, urlStr string, args ...interface{}) *Respons
 
 		for _, arg := range args {
 			switch _arg := arg.(type) {
-			case Headers:
+			case *Headers:
 				s.request.Headers = _arg
-			case SimpleCookie:
+			case *SimpleCookie:
 				s.request.Cookies = _arg
-			case Auth:
+			case *Auth:
 				s.request.Auth = _arg
-			case Params:
+			case *Params:
 				s.request.Params = _arg
-			case Form:
+			case *Form:
 				s.request.Form = _arg
-			case Payload:
+			case *Payload:
 				s.request.Payload = _arg
 			case *File:
 				s.request.Files = append(s.request.Files, _arg)

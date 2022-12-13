@@ -76,7 +76,9 @@ func TestRequest(t *testing.T) {
 	UUID, _ := uuid.NewV4()
 
 	key := genKey()
+	fmt.Println(key)
 	iv := fmt.Sprintf("%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"))
+	fmt.Println(iv)
 	timestamp := strconv.FormatInt(now.UnixNano()/1e6, 10)
 
 	_ = session.RegisterBeforeReqHook(func(req *requests.Request) error {
@@ -84,10 +86,11 @@ func TestRequest(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		req.Form["params"].(map[string]interface{})["ciphertext"] = genCipher(key + iv + base64.StdEncoding.EncodeToString(encryptStr))
+		(*req.Form)["params"].(map[string]interface{})["ciphertext"] = genCipher(key + iv + base64.StdEncoding.EncodeToString(encryptStr))
 
 		d, err := json.Marshal(req.Form)
-		req.Form = requests.Form{
+		fmt.Println(string(d))
+		req.Form = &requests.Form{
 			"request": base64.StdEncoding.EncodeToString(d),
 		}
 		return err
@@ -120,7 +123,10 @@ func TestRequest(t *testing.T) {
 			},
 		},
 	}
-	resp := session.Post(url, headers, data, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true})
+	cookies := requests.SimpleCookie{
+		"SESSION": "b52c07c2-d1e7-4a65-9a80-d80e181bf4b8",
+	}
+	resp := session.Post(url, headers, data, cookies, requests.Arguments{Proxy: "http://127.0.0.1:8888", SkipVerifyTLS: true})
 	if resp.Error() != nil {
 		panic(resp.Error())
 	}

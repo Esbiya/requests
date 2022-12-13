@@ -72,12 +72,12 @@ func escapeQuotes(s string) string {
 
 type Request struct {
 	*http.Request
-	Headers Headers
-	Cookies SimpleCookie
-	Auth    Auth
-	Params  Params
-	Form    Form
-	Payload Payload
+	Headers *Headers
+	Cookies *SimpleCookie
+	Auth    *Auth
+	Params  *Params
+	Form    *Form
+	Payload *Payload
 	Binary  []byte
 	Files   []*File
 
@@ -111,7 +111,7 @@ func (r *Request) setQuery() error {
 	originURL := r.Request.URL
 	extendQuery := make([]byte, 0)
 
-	for k, v := range r.Params {
+	for k, v := range *r.Params {
 		kEscaped := url.QueryEscape(k)
 		vEscaped := url.QueryEscape(v)
 
@@ -131,7 +131,7 @@ func (r *Request) setQuery() error {
 
 func (r *Request) setForm() error {
 	data := ""
-	for k, v := range r.Form {
+	for k, v := range *r.Form {
 		k = url.QueryEscape(k)
 
 		vs, ok := v.(string)
@@ -245,7 +245,7 @@ func (r *Request) setFiles() error {
 }
 
 func (r *Request) setAuth() error {
-	for k, v := range r.Auth {
+	for k, v := range *r.Auth {
 		vs, ok := v.(string)
 		if !ok {
 			return fmt.Errorf("basic-auth %v[%T] must be string type", v, v)
@@ -261,13 +261,13 @@ func (r *Request) setRequestArgs() error {
 	}
 
 	if r.Headers != nil {
-		for key, value := range r.Headers {
+		for key, value := range *r.Headers {
 			r.Request.Header[key] = []string{value}
 		}
 	}
 
 	if r.Cookies != nil {
-		for cookieK, cookieV := range r.Cookies {
+		for cookieK, cookieV := range *r.Cookies {
 			c := &http.Cookie{
 				Name:  cookieK,
 				Value: cookieV,
